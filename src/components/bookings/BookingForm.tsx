@@ -1,139 +1,126 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Calendar as CalendarIcon, Users } from 'lucide-react';
+import { Calendar } from 'lucide-react';
 import { format } from 'date-fns';
-import { useNavigate } from 'react-router-dom';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+
+import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { Calendar as CalendarUI } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Calendar } from '@/components/ui/calendar';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Textarea } from '@/components/ui/textarea';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
+import { Slider } from '@/components/ui/slider';
+import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
-import { Property, TimeFrame, Booking } from '@/types';
+import { BookingStatus, GenderOption, Property, TimeFrame } from '@/types';
 
-const bookingSchema = z.object({
+const formSchema = z.object({
   check_in_date: z.date({
-    required_error: "Check-in date is required"
+    required_error: "A check-in date is required.",
   }),
-  check_out_date: z.date().optional(),
+  check_out_date: z.date({
+    required_error: "A check-out date is required.",
+  }),
   time_frame: z.enum(['daily', 'monthly'], {
-    required_error: "Booking type is required"
+    required_error: "Please select a time frame.",
   }),
-  number_of_guests: z.number()
-    .min(1, "At least 1 guest is required")
-    .max(10, "Maximum 10 guests allowed"),
-  special_requests: z.string().max(500, "Special requests cannot exceed 500 characters").optional(),
+  number_of_guests: z.number().min(1).max(10).default(1),
+  special_requests: z.string().optional(),
 });
-
-type BookingFormValues = z.infer<typeof bookingSchema>;
 
 interface BookingFormProps {
   property: Property;
-  onSuccess?: (booking: Booking) => void;
 }
 
-const BookingForm: React.FC<BookingFormProps> = ({ property, onSuccess }) => {
-  const { user, isAuthenticated } = useAuth();
+const BookingForm: React.FC<BookingFormProps> = ({ property }) => {
+  const { user } = useAuth();
+  const router = useRouter();
   const { toast } = useToast();
-  const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [totalAmount, setTotalAmount] = useState<number>(0);
 
-  const form = useForm<BookingFormValues>({
-    resolver: zodResolver(bookingSchema),
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
     defaultValues: {
       check_in_date: new Date(),
+      check_out_date: new Date(),
       time_frame: 'monthly',
       number_of_guests: 1,
       special_requests: '',
     },
   });
 
-  const timeFrame = form.watch('time_frame');
-  const checkInDate = form.watch('check_in_date');
-  const checkOutDate = form.watch('check_out_date');
-  const numberOfGuests = form.watch('number_of_guests');
-
-  useEffect(() => {
-    // Calculate total amount based on time frame and duration
-    if (timeFrame === 'monthly') {
-      setTotalAmount(property.monthly_price);
-    } else if (timeFrame === 'daily' && property.daily_price) {
-      // If check-out date is provided, calculate days difference
-      if (checkOutDate) {
-        const days = Math.ceil(
-          (checkOutDate.getTime() - checkInDate.getTime()) / (1000 * 60 * 60 * 24)
-        );
-        setTotalAmount(property.daily_price * Math.max(1, days));
-      } else {
-        setTotalAmount(property.daily_price);
-      }
+  const calculateTotalAmount = (values: z.infer<typeof formSchema>): number => {
+    const { check_in_date, check_out_date, time_frame } = values;
+    const pricePerUnit = time_frame === 'daily' ? property.daily_price : property.monthly_price;
+  
+    if (!pricePerUnit) {
+      return 0;
     }
-  }, [timeFrame, checkInDate, checkOutDate, property.monthly_price, property.daily_price]);
-
-  const onSubmit = async (values: BookingFormValues) => {
-    if (!isAuthenticated) {
-      toast({
-        title: 'Authentication required',
-        description: 'Please sign in to book this property',
-        variant: 'destructive',
-      });
-      navigate('/auth/login', { state: { from: window.location.pathname } });
-      return;
+  
+    const checkIn = new Date(check_in_date);
+    const checkOut = new Date(check_out_date);
+  
+    if (isNaN(checkIn.getTime()) || isNaN(checkOut.getTime())) {
+      return 0;
     }
+  
+    const timeDiff = checkOut.getTime() - checkIn.getTime();
+  
+    if (time_frame === 'daily') {
+      const daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24));
+      return pricePerUnit * daysDiff;
+    } else {
+      const monthsDiff = (checkOut.getFullYear() - checkIn.getFullYear()) * 12 + (checkOut.getMonth() - checkIn.getMonth());
+      return pricePerUnit * monthsDiff;
+    }
+  };
 
+  const handleSubmit = async (values: z.infer<typeof formSchema>) => {
     try {
       setIsSubmitting(true);
-
+      
+      // Calculate total amount based on selected dates and time frame
+      const totalAmount = calculateTotalAmount(values);
+      
       const bookingData = {
         property_id: property.id,
-        user_id: user!.id,
-        check_in_date: format(values.check_in_date, 'yyyy-MM-dd'),
-        check_out_date: values.check_out_date ? format(values.check_out_date, 'yyyy-MM-dd') : null,
-        time_frame: values.time_frame,
-        price_per_unit: values.time_frame === 'monthly' ? property.monthly_price : property.daily_price || 0,
+        user_id: user.id,
+        check_in_date: values.check_in_date,
+        check_out_date: values.check_out_date,
+        time_frame: values.time_frame as TimeFrame,
+        price_per_unit: values.time_frame === 'daily' ? property.daily_price : property.monthly_price,
         total_amount: totalAmount,
-        status: 'pending',
+        status: 'pending' as BookingStatus, // Cast to BookingStatus type
         number_of_guests: values.number_of_guests,
-        special_requests: values.special_requests || null,
+        special_requests: values.special_requests,
       };
-
+      
       const { data, error } = await supabase
         .from('bookings')
         .insert(bookingData)
         .select()
         .single();
-
-      if (error) {
-        throw error;
-      }
-
+        
+      if (error) throw error;
+      
       toast({
-        title: 'Booking submitted',
-        description: 'Your booking request has been successfully submitted!',
+        title: "Booking Submitted",
+        description: "Your booking has been successfully submitted and is awaiting confirmation.",
       });
-
-      form.reset();
-
-      if (onSuccess && data) {
-        onSuccess(data as Booking);
-      }
-
-      // Redirect to booking confirmation page
-      navigate(`/bookings/${data.id}/confirmation`);
+      
+      router.push(`/bookings/${data.id}/confirmation`);
     } catch (error: any) {
-      console.error('Error submitting booking:', error);
+      console.error('Error creating booking:', error);
       toast({
-        title: 'Booking failed',
-        description: error.message || 'An error occurred while submitting your booking',
-        variant: 'destructive',
+        title: "Booking Failed",
+        description: error.message || "There was an error submitting your booking. Please try again.",
+        variant: "destructive"
       });
     } finally {
       setIsSubmitting(false);
@@ -141,199 +128,158 @@ const BookingForm: React.FC<BookingFormProps> = ({ property, onSuccess }) => {
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200 sticky top-24">
-      <h3 className="text-lg font-semibold mb-4">Book This Property</h3>
-      
-      <div className="flex items-baseline justify-between mb-6">
-        <div>
-          <span className="text-2xl font-bold">₹{property.monthly_price.toLocaleString()}</span>
-          <span className="text-gray-500">/month</span>
-        </div>
-        {property.daily_price && (
-          <div>
-            <span className="text-lg font-medium">₹{property.daily_price.toLocaleString()}</span>
-            <span className="text-gray-500">/day</span>
-          </div>
-        )}
-      </div>
-      
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FormField
             control={form.control}
-            name="time_frame"
+            name="check_in_date"
             render={({ field }) => (
-              <FormItem>
-                <FormLabel>Booking Type</FormLabel>
-                <FormControl>
-                  <RadioGroup
-                    onValueChange={field.onChange}
-                    defaultValue={field.value}
-                    className="flex gap-4"
-                  >
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="monthly" id="monthly" />
-                      <label htmlFor="monthly" className="cursor-pointer">Monthly</label>
-                    </div>
-                    
-                    {property.daily_price ? (
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="daily" id="daily" />
-                        <label htmlFor="daily" className="cursor-pointer">Daily</label>
-                      </div>
-                    ) : null}
-                  </RadioGroup>
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          
-          <div className={timeFrame === 'daily' ? 'grid grid-cols-2 gap-4' : ''}>
-            <FormField
-              control={form.control}
-              name="check_in_date"
-              render={({ field }) => (
-                <FormItem className="flex flex-col">
-                  <FormLabel>Check-in Date</FormLabel>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <FormControl>
-                        <Button
-                          variant={"outline"}
-                          className="w-full pl-3 text-left font-normal"
-                        >
-                          {field.value ? (
-                            format(field.value, "PPP")
-                          ) : (
-                            <span>Pick a date</span>
-                          )}
-                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                        </Button>
-                      </FormControl>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={field.value}
-                        onSelect={field.onChange}
-                        disabled={(date) => date < new Date()}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            {timeFrame === 'daily' && (
-              <FormField
-                control={form.control}
-                name="check_out_date"
-                render={({ field }) => (
-                  <FormItem className="flex flex-col">
-                    <FormLabel>Check-out Date</FormLabel>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <FormControl>
-                          <Button
-                            variant={"outline"}
-                            className="w-full pl-3 text-left font-normal"
-                          >
-                            {field.value ? (
-                              format(field.value, "PPP")
-                            ) : (
-                              <span>Pick a date</span>
-                            )}
-                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                          </Button>
-                        </FormControl>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={field.value || undefined}
-                          onSelect={field.onChange}
-                          disabled={(date) => date < checkInDate}
-                          initialFocus
-                        />
-                      </PopoverContent>
-                    </Popover>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            )}
-          </div>
-          
-          <FormField
-            control={form.control}
-            name="number_of_guests"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Number of Guests</FormLabel>
-                <FormControl>
-                  <div className="relative">
-                    <Users className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      type="number"
-                      min={1}
-                      max={10}
-                      className="pl-10"
-                      {...field}
-                      onChange={(e) => field.onChange(parseInt(e.target.value))}
+              <FormItem className="flex flex-col">
+                <FormLabel>Check-in date</FormLabel>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <FormControl>
+                      <Button
+                        variant={"outline"}
+                        className={cn(
+                          "w-[240px] pl-3 text-left font-normal",
+                          !field.value && "text-muted-foreground"
+                        )}
+                      >
+                        {field.value ? (
+                          format(field.value, "PPP")
+                        ) : (
+                          <span>Pick a date</span>
+                        )}
+                        <Calendar className="ml-auto h-4 w-4 opacity-50" />
+                      </Button>
+                    </FormControl>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <CalendarUI
+                      mode="single"
+                      selected={field.value}
+                      onSelect={field.onChange}
+                      disabled={(date) =>
+                        date < new Date()
+                      }
+                      initialFocus
                     />
-                  </div>
-                </FormControl>
+                  </PopoverContent>
+                </Popover>
                 <FormMessage />
               </FormItem>
             )}
           />
-          
           <FormField
             control={form.control}
-            name="special_requests"
+            name="check_out_date"
             render={({ field }) => (
-              <FormItem>
-                <FormLabel>Special Requests (Optional)</FormLabel>
-                <FormControl>
-                  <Textarea
-                    placeholder="Any special requirements or requests..."
-                    className="resize-none"
-                    {...field}
-                  />
-                </FormControl>
+              <FormItem className="flex flex-col">
+                <FormLabel>Check-out date</FormLabel>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <FormControl>
+                      <Button
+                        variant={"outline"}
+                        className={cn(
+                          "w-[240px] pl-3 text-left font-normal",
+                          !field.value && "text-muted-foreground"
+                        )}
+                      >
+                        {field.value ? (
+                          format(field.value, "PPP")
+                        ) : (
+                          <span>Pick a date</span>
+                        )}
+                        <Calendar className="ml-auto h-4 w-4 opacity-50" />
+                      </Button>
+                    </FormControl>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <CalendarUI
+                      mode="single"
+                      selected={field.value}
+                      onSelect={field.onChange}
+                      disabled={(date) =>
+                        date < new Date() || date < form.getValues('check_in_date')
+                      }
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
                 <FormMessage />
               </FormItem>
             )}
           />
-          
-          <div className="border-t border-gray-200 pt-4 mt-4">
-            <div className="flex justify-between mb-2">
-              <span>Subtotal</span>
-              <span>₹{totalAmount.toLocaleString()}</span>
-            </div>
-            <div className="flex justify-between mb-2 text-muted-foreground text-sm">
-              <span>Service fee</span>
-              <span>₹0</span>
-            </div>
-            <div className="flex justify-between font-bold">
-              <span>Total</span>
-              <span>₹{totalAmount.toLocaleString()}</span>
-            </div>
-          </div>
-          
-          <Button type="submit" className="w-full" disabled={isSubmitting}>
-            {isSubmitting ? 'Processing...' : 'Request to Book'}
-          </Button>
-        </form>
-      </Form>
-      
-      <p className="text-xs text-center text-muted-foreground mt-4">
-        You won't be charged yet. Payments will be processed after the owner accepts your booking.
-      </p>
-    </div>
+        </div>
+
+        <FormField
+          control={form.control}
+          name="time_frame"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Time Frame</FormLabel>
+              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a time frame" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  <SelectItem value="daily">Daily</SelectItem>
+                  <SelectItem value="monthly">Monthly</SelectItem>
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="number_of_guests"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Number of Guests</FormLabel>
+              <FormControl>
+                <Slider
+                  defaultValue={[field.value]}
+                  max={10}
+                  min={1}
+                  step={1}
+                  onValueChange={(value) => field.onChange(value[0])}
+                  className="max-w-md"
+                />
+              </FormControl>
+              <p className="text-sm text-muted-foreground">
+                Selected: {field.value} guest(s)
+              </p>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="special_requests"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Special Requests</FormLabel>
+              <FormControl>
+                <Input placeholder="Any special requests?" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <Button type="submit" disabled={isSubmitting}>
+          {isSubmitting ? "Submitting..." : "Submit Booking"}
+        </Button>
+      </form>
+    </Form>
   );
 };
 

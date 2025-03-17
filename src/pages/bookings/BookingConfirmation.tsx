@@ -1,30 +1,24 @@
-
-import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
-import { CheckCircle, ArrowLeft, Calendar, Home, User, Clock } from 'lucide-react';
-import { format } from 'date-fns';
+import React, { useState, useEffect } from 'react';
+import { useParams, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
-import { useToast } from '@/hooks/use-toast';
-import { Booking } from '@/types';
-import Navbar from '@/components/layout/Navbar';
-import Footer from '@/components/layout/Footer';
+import { Booking, BookingStatus, GenderOption, TimeFrame, UserRole } from '@/types';
+import { Calendar } from 'lucide-react';
+import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
+import { useToast } from '@/hooks/use-toast';
+import { Loader2 } from 'lucide-react';
 
 const BookingConfirmation = () => {
   const { bookingId } = useParams<{ bookingId: string }>();
-  const { user } = useAuth();
-  const { toast } = useToast();
-  const navigate = useNavigate();
   const [booking, setBooking] = useState<Booking | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const { toast } = useToast();
 
   useEffect(() => {
     const fetchBooking = async () => {
-      if (!bookingId || !user) return;
-
       try {
         setIsLoading(true);
+        
         const { data, error } = await supabase
           .from('bookings')
           .select(`
@@ -34,214 +28,139 @@ const BookingConfirmation = () => {
           `)
           .eq('id', bookingId)
           .single();
-
-        if (error) {
-          throw error;
-        }
-
-        if (!data) {
-          toast({
-            title: 'Booking not found',
-            description: 'The booking you are looking for does not exist',
-            variant: 'destructive',
-          });
-          navigate('/dashboard/student');
-          return;
-        }
-
-        // Ensure user can only view their own bookings
-        if (data.user_id !== user.id) {
-          toast({
-            title: 'Access denied',
-            description: 'You do not have permission to view this booking',
-            variant: 'destructive',
-          });
-          navigate('/dashboard/student');
-          return;
-        }
-
-        setBooking(data as Booking);
+          
+        if (error) throw error;
+        
+        const bookingData: Booking = {
+          id: data.id,
+          property_id: data.property_id,
+          user_id: data.user_id,
+          check_in_date: data.check_in_date,
+          check_out_date: data.check_out_date,
+          time_frame: data.time_frame as TimeFrame,
+          price_per_unit: data.price_per_unit,
+          total_amount: data.total_amount,
+          status: data.status as BookingStatus,
+          created_at: data.created_at,
+          updated_at: data.updated_at,
+          property: data.property ? {
+            id: data.property.id,
+            merchant_id: data.property.merchant_id,
+            name: data.property.name,
+            type: data.property.type,
+            gender: data.property.gender as GenderOption,
+            description: data.property.description,
+            location_id: data.property.location_id,
+            address: data.property.address,
+            latitude: data.property.latitude,
+            longitude: data.property.longitude,
+            daily_price: data.property.daily_price,
+            monthly_price: data.property.monthly_price,
+            is_verified: data.property.is_verified,
+            created_at: data.property.created_at,
+            updated_at: data.property.updated_at
+          } : null,
+          user: data.user && !data.user.error ? {
+            id: data.user.id,
+            full_name: data.user.full_name,
+            role: data.user.role as UserRole,
+            phone: data.user.phone,
+            email: data.user.email,
+            avatar_url: data.user.avatar_url,
+            created_at: data.user.created_at,
+            updated_at: data.user.updated_at
+          } : null,
+          number_of_guests: data.number_of_guests,
+          special_requests: data.special_requests
+        };
+        
+        setBooking(bookingData);
       } catch (error: any) {
         console.error('Error fetching booking:', error);
         toast({
-          title: 'Error',
-          description: 'Failed to load booking information',
-          variant: 'destructive',
+          title: "Error",
+          description: "Could not load booking details. " + error.message,
+          variant: "destructive"
         });
       } finally {
         setIsLoading(false);
       }
     };
-
-    fetchBooking();
-  }, [bookingId, user, toast, navigate]);
-
-  const formatDate = (dateString: string) => {
-    return format(new Date(dateString), 'PPP');
-  };
+    
+    if (bookingId) {
+      fetchBooking();
+    }
+  }, [bookingId, supabase, toast]);
 
   if (isLoading) {
     return (
-      <div className="flex min-h-screen flex-col bg-gray-50">
-        <Navbar />
-        <div className="container mx-auto px-4 py-24 flex justify-center">
-          <div className="loading-spinner"></div>
-        </div>
+      <div className="flex min-h-screen items-center justify-center">
+        <Loader2 className="mr-2 h-8 w-8 animate-spin" />
+        Loading booking details...
       </div>
     );
   }
 
   if (!booking) {
     return (
-      <div className="flex min-h-screen flex-col bg-gray-50">
-        <Navbar />
-        <div className="container mx-auto px-4 py-24 text-center">
-          <h2 className="text-2xl font-bold mb-2">Booking Not Found</h2>
-          <p className="mb-6">The booking you are looking for does not exist or you don't have permission to view it.</p>
-          <Button asChild>
-            <Link to="/dashboard/student">Back to Dashboard</Link>
-          </Button>
-        </div>
+      <div className="flex min-h-screen items-center justify-center">
+        <h2>Booking not found</h2>
       </div>
     );
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-gray-50">
-      <Navbar />
-      
-      <div className="container mx-auto px-4 py-24">
-        <Link to="/dashboard/student" className="inline-flex items-center text-primary hover:underline mb-6">
-          <ArrowLeft size={16} className="mr-2" />
-          Back to Dashboard
-        </Link>
-        
-        <div className="max-w-3xl mx-auto bg-white rounded-lg shadow-sm p-8 border border-gray-200">
-          <div className="text-center mb-8">
-            <div className="flex justify-center mb-4">
-              <CheckCircle className="h-16 w-16 text-green-500" />
-            </div>
-            <h1 className="text-2xl font-bold mb-2">Booking Confirmation</h1>
-            <p className="text-gray-600">
-              Your booking request has been submitted successfully.
-            </p>
-          </div>
-          
-          <div className="border-t border-b border-gray-200 py-6 mb-6">
-            <div className="grid md:grid-cols-2 gap-6">
-              <div>
-                <h3 className="text-lg font-semibold mb-4">Booking Details</h3>
-                <ul className="space-y-3">
-                  <li className="flex">
-                    <Calendar className="h-5 w-5 text-primary mr-3" />
-                    <div>
-                      <span className="block text-sm text-gray-500">Check-in Date</span>
-                      <span className="font-medium">{formatDate(booking.check_in_date)}</span>
-                    </div>
-                  </li>
-                  
-                  {booking.check_out_date && (
-                    <li className="flex">
-                      <Calendar className="h-5 w-5 text-primary mr-3" />
-                      <div>
-                        <span className="block text-sm text-gray-500">Check-out Date</span>
-                        <span className="font-medium">{formatDate(booking.check_out_date)}</span>
-                      </div>
-                    </li>
-                  )}
-                  
-                  <li className="flex">
-                    <Clock className="h-5 w-5 text-primary mr-3" />
-                    <div>
-                      <span className="block text-sm text-gray-500">Booking Type</span>
-                      <span className="font-medium capitalize">{booking.time_frame}</span>
-                    </div>
-                  </li>
-                  
-                  {booking.number_of_guests && (
-                    <li className="flex">
-                      <User className="h-5 w-5 text-primary mr-3" />
-                      <div>
-                        <span className="block text-sm text-gray-500">Guests</span>
-                        <span className="font-medium">{booking.number_of_guests}</span>
-                      </div>
-                    </li>
-                  )}
-                  
-                  <li className="flex">
-                    <div className="rounded-full bg-primary w-5 h-5 flex items-center justify-center text-white text-xs mr-3">₹</div>
-                    <div>
-                      <span className="block text-sm text-gray-500">Total Amount</span>
-                      <span className="font-medium">₹{booking.total_amount.toLocaleString()}</span>
-                    </div>
-                  </li>
-                </ul>
-              </div>
-              
-              <div>
-                <h3 className="text-lg font-semibold mb-4">Property Information</h3>
-                {booking.property && (
-                  <div className="flex">
-                    <Home className="h-5 w-5 text-primary mr-3 flex-shrink-0" />
-                    <div>
-                      <span className="block font-medium">{booking.property.name}</span>
-                      <span className="block text-sm text-gray-500">{booking.property.address}</span>
-                      <span className="block text-sm text-gray-500 capitalize">{booking.property.type} • {booking.property.gender}</span>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-          
-          <div className="mb-6">
-            <h3 className="text-lg font-semibold mb-2">Booking Status</h3>
-            <div className="flex items-center">
-              <div className={`
-                inline-flex items-center px-3 py-1 rounded-full text-sm font-medium
-                ${booking.status === 'pending' ? 'bg-amber-100 text-amber-700' : 
-                  booking.status === 'confirmed' ? 'bg-green-100 text-green-700' :
-                  booking.status === 'cancelled' ? 'bg-red-100 text-red-700' :
-                  'bg-blue-100 text-blue-700'}
-              `}>
-                {booking.status === 'pending' && 'Pending approval'}
-                {booking.status === 'confirmed' && 'Confirmed'}
-                {booking.status === 'cancelled' && 'Cancelled'}
-                {booking.status === 'completed' && 'Completed'}
-              </div>
-            </div>
-            
-            <p className="mt-4 text-sm text-gray-600">
-              {booking.status === 'pending' && 'Your booking request is awaiting approval from the property owner. We will notify you once it is confirmed.'}
-              {booking.status === 'confirmed' && 'Your booking has been confirmed by the property owner. You can proceed with your stay as planned.'}
-              {booking.status === 'cancelled' && 'This booking has been cancelled. If you have any questions, please contact customer support.'}
-              {booking.status === 'completed' && 'This booking has been completed. We hope you enjoyed your stay!'}
-            </p>
-          </div>
-          
-          <div className="text-center mt-8">
-            <p className="text-sm text-gray-500 mb-4">
-              Your booking reference: <span className="font-mono font-medium">{booking.id}</span>
-            </p>
-            
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button asChild variant="outline">
-                <Link to="/dashboard/student">View All Bookings</Link>
-              </Button>
-              
-              {booking.property && (
-                <Button asChild>
-                  <Link to={`/property/${booking.property.id}`}>View Property</Link>
-                </Button>
-              )}
-            </div>
-          </div>
+    <div className="container mx-auto mt-10 p-6 bg-white shadow-md rounded-md">
+      <h1 className="text-2xl font-semibold mb-4">Booking Confirmation</h1>
+
+      <div className="mb-4">
+        <strong>Booking ID:</strong> {booking.id}
+      </div>
+
+      <div className="mb-4">
+        <strong>Property:</strong>{' '}
+        {booking.property ? (
+          <Link to={`/properties/${booking.property.id}`} className="text-blue-500 hover:underline">
+            {booking.property.name}
+          </Link>
+        ) : (
+          'Property details not available'
+        )}
+      </div>
+
+      <div className="mb-4">
+        <strong>Check-in Date:</strong>{' '}
+        {format(new Date(booking.check_in_date), 'MMMM dd, yyyy')}
+      </div>
+
+      {booking.check_out_date && (
+        <div className="mb-4">
+          <strong>Check-out Date:</strong>{' '}
+          {format(new Date(booking.check_out_date), 'MMMM dd, yyyy')}
         </div>
+      )}
+
+      <div className="mb-4">
+        <strong>Time Frame:</strong> {booking.time_frame}
       </div>
-      
-      <div className="mt-auto">
-        <Footer />
+
+      <div className="mb-4">
+        <strong>Total Amount:</strong> ${booking.total_amount}
       </div>
+
+      <div className="mb-4">
+        <strong>Status:</strong> {booking.status}
+      </div>
+
+      <div className="mb-4">
+        <strong>Booked on:</strong> {format(new Date(booking.created_at), 'MMMM dd, yyyy')}
+      </div>
+
+      <Button asChild>
+        <Link to="/">
+          Go to Homepage
+        </Link>
+      </Button>
     </div>
   );
 };
