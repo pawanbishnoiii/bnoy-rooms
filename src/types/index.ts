@@ -1,8 +1,7 @@
-
 // Auth types
 export type UserRole = 'student' | 'merchant' | 'admin';
 export type GenderOption = 'boys' | 'girls' | 'common';
-export type BookingStatus = 'pending' | 'confirmed' | 'cancelled' | 'completed';
+export type BookingStatus = 'pending' | 'confirmed' | 'cancelled' | 'completed' | 'processing' | 'refunded';
 export type TimeFrame = 'daily' | 'monthly';
 
 export interface UserProfile {
@@ -34,6 +33,10 @@ export interface Location {
   latitude: number | null;
   longitude: number | null;
   created_at: string;
+  city?: string;
+  state?: string;
+  country?: string;
+  zip_code?: string;
 }
 
 export interface Facility {
@@ -58,12 +61,16 @@ export interface Property {
   is_verified: boolean;
   created_at: string;
   updated_at: string;
-  // Joined fields
   location?: Location;
   facilities?: Facility[];
   images?: PropertyImage[];
   reviews?: Review[];
   average_rating?: number;
+  available_rooms?: number;
+  total_rooms?: number;
+  amenities_summary?: string;
+  distance_to_center?: number;
+  popular_landmarks?: string[];
 }
 
 export interface PropertyImage {
@@ -86,11 +93,28 @@ export interface Review {
   property_id: string;
   user_id: string;
   rating: number;
+  cleanliness_rating?: number;
+  location_rating?: number;
+  value_rating?: number;
+  service_rating?: number;
   comment: string | null;
   created_at: string;
   updated_at: string;
-  // Joined fields
   user?: UserProfile;
+  helpful_count?: number;
+  reported?: boolean;
+  admin_approved?: boolean;
+  images?: string[];
+  response?: ReviewResponse;
+}
+
+export interface ReviewResponse {
+  id: string;
+  review_id: string;
+  merchant_id: string;
+  comment: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface Booking {
@@ -105,7 +129,47 @@ export interface Booking {
   status: BookingStatus;
   created_at: string;
   updated_at: string;
-  // Joined fields
-  property?: Property;
-  user?: UserProfile;
+  property?: Property | null;
+  user?: UserProfile | null;
+  payment_id?: string;
+  payment_status?: 'pending' | 'completed' | 'failed' | 'refunded';
+  check_in_time?: string;
+  check_out_time?: string;
+  special_requests?: string;
+  number_of_guests?: number;
+  cancellation_reason?: string;
+  refund_amount?: number;
+}
+
+export interface SearchResult {
+  properties: Property[];
+  total: number;
+  page: number;
+  limit: number;
+  filters_applied: SearchFilters;
+}
+
+export interface SearchFilters {
+  location?: string;
+  price_min?: number;
+  price_max?: number;
+  gender?: GenderOption;
+  property_type?: string[];
+  facilities?: string[];
+  rating?: number;
+  sort_by?: 'price_low' | 'price_high' | 'rating' | 'newest';
+  distance?: number;
+  near_institution?: string;
+}
+
+export interface Payment {
+  id: string;
+  booking_id: string;
+  amount: number;
+  currency: string;
+  payment_method: string;
+  status: string;
+  transaction_id?: string;
+  created_at: string;
+  updated_at: string;
 }

@@ -15,6 +15,7 @@ import UserDashboard from "./pages/dashboard/UserDashboard";
 import AdminDashboard from "./pages/dashboard/AdminDashboard";
 import Properties from "./pages/Properties";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
+import BookingConfirmation from "./pages/bookings/BookingConfirmation";
 
 const queryClient = new QueryClient();
 
@@ -54,6 +55,14 @@ const App = () => (
                   <AdminDashboard />
                 </ProtectedRoute>
               } 
+            />
+            <Route
+              path="/bookings/:bookingId/confirmation"
+              element={
+                <ProtectedRoute>
+                  <BookingConfirmation />
+                </ProtectedRoute>
+              }
             />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />

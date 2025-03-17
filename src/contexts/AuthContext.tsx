@@ -4,6 +4,7 @@ import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { UserProfile, UserRole } from '@/types';
 import { useToast } from '@/hooks/use-toast';
+import { useNavigate } from 'react-router-dom';
 
 type AuthContextType = {
   session: Session | null;
@@ -16,6 +17,9 @@ type AuthContextType = {
   signInWithGoogle: () => Promise<void>;
   signInWithFacebook: () => Promise<void>;
   signOut: () => Promise<void>;
+  updateProfile: (updates: Partial<UserProfile>) => Promise<void>;
+  sendPasswordResetEmail: (email: string) => Promise<void>;
+  isAuthenticated: boolean;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -26,6 +30,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [userRole, setUserRole] = useState<UserRole | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -33,6 +38,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
+      setIsAuthenticated(!!session);
 
       if (session?.user) {
         fetchUserProfile(session.user.id);
@@ -46,6 +52,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       async (_event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
+        setIsAuthenticated(!!session);
 
         if (session?.user) {
           await fetchUserProfile(session.user.id);
@@ -232,6 +239,69 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const updateProfile = async (updates: Partial<UserProfile>) => {
+    if (!user) return;
+    
+    try {
+      setIsLoading(true);
+      
+      const { data, error } = await supabase
+        .from('profiles')
+        .update(updates)
+        .eq('id', user.id)
+        .select()
+        .single();
+        
+      if (error) {
+        throw error;
+      }
+      
+      setProfile(prev => prev ? { ...prev, ...updates } : null);
+      
+      toast({
+        title: 'Profile updated',
+        description: 'Your profile has been successfully updated'
+      });
+      
+    } catch (error: any) {
+      console.error('Error updating profile:', error);
+      toast({
+        title: 'Update failed',
+        description: error.message || 'An error occurred while updating your profile',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const sendPasswordResetEmail = async (email: string) => {
+    try {
+      setIsLoading(true);
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/auth/reset-password`,
+      });
+      
+      if (error) {
+        throw error;
+      }
+      
+      toast({
+        title: 'Password reset email sent',
+        description: 'Check your inbox for instructions to reset your password'
+      });
+    } catch (error: any) {
+      console.error('Error sending password reset email:', error);
+      toast({
+        title: 'Password reset failed',
+        description: error.message || 'An error occurred sending the password reset email',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
   const value = {
     session,
     user,
@@ -242,7 +312,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     signIn,
     signInWithGoogle,
     signInWithFacebook,
-    signOut
+    signOut,
+    updateProfile,
+    sendPasswordResetEmail,
+    isAuthenticated
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -68,7 +67,6 @@ const MerchantDashboard = () => {
 
       if (error) throw error;
       
-      // Transform the data to match our Property type
       const formattedProperties: Property[] = (data || []).map(property => ({
         ...property,
         location: property.location ? {
@@ -102,7 +100,6 @@ const MerchantDashboard = () => {
 
   const fetchBookings = async () => {
     try {
-      // First get property IDs for this merchant
       const { data: propertyIds, error: propError } = await supabase
         .from('properties')
         .select('id')
@@ -111,7 +108,6 @@ const MerchantDashboard = () => {
       if (propError) throw propError;
       
       if (propertyIds && propertyIds.length > 0) {
-        // Get bookings for these properties
         const { data, error } = await supabase
           .from('bookings')
           .select(`
@@ -124,59 +120,7 @@ const MerchantDashboard = () => {
 
         if (error) throw error;
         
-        // Transform the data to match our Booking type
-        const formattedBookings: Booking[] = (data || []).map(booking => {
-          // Check if user is an error object and provide default values if needed
-          const userProfile: UserProfile | undefined = 
-            booking.user && typeof booking.user === 'object' && !('message' in booking.user) ? 
-              {
-                id: booking.user.id || '',
-                full_name: booking.user.full_name || null,
-                role: booking.user.role || 'student',
-                phone: booking.user.phone || null,
-                email: booking.user.email || null,
-                avatar_url: booking.user.avatar_url || null,
-                created_at: booking.user.created_at || '',
-                updated_at: booking.user.updated_at || '',
-              } : undefined;
-          
-          // Check if property is an error object and provide default values
-          const propertyData: Property | undefined = 
-            booking.property && typeof booking.property === 'object' && !('message' in booking.property) ?
-              {
-                id: booking.property.id || '',
-                merchant_id: '',  // Default value
-                name: booking.property.name || '',
-                type: booking.property.type || '',
-                gender: booking.property.gender || 'common',
-                description: null,
-                location_id: null,
-                address: booking.property.address || '',
-                latitude: null,
-                longitude: null,
-                daily_price: null,
-                monthly_price: 0,  // Default value
-                is_verified: false,  // Default value
-                created_at: '',  // Default value
-                updated_at: '',  // Default value
-              } : undefined;
-          
-          return {
-            id: booking.id,
-            property_id: booking.property_id,
-            user_id: booking.user_id,
-            check_in_date: booking.check_in_date,
-            check_out_date: booking.check_out_date,
-            time_frame: booking.time_frame,
-            price_per_unit: booking.price_per_unit,
-            total_amount: booking.total_amount,
-            status: booking.status || 'pending',
-            created_at: booking.created_at,
-            updated_at: booking.updated_at,
-            property: propertyData,
-            user: userProfile,
-          };
-        });
+        const formattedBookings: Booking[] = transformBookings(data || []);
         
         setBookings(formattedBookings);
       } else {
@@ -192,6 +136,51 @@ const MerchantDashboard = () => {
     }
   };
 
+  const transformBookings = (bookingsData: any[]): Booking[] => {
+    return bookingsData.map((booking) => {
+      return {
+        id: booking.id,
+        property_id: booking.property_id,
+        user_id: booking.user_id,
+        check_in_date: booking.check_in_date,
+        check_out_date: booking.check_out_date,
+        time_frame: booking.time_frame,
+        price_per_unit: booking.price_per_unit,
+        total_amount: booking.total_amount,
+        status: booking.status,
+        created_at: booking.created_at,
+        updated_at: booking.updated_at,
+        property: booking.property ? {
+          id: booking.property.id || '',
+          merchant_id: booking.property.merchant_id || '',
+          name: booking.property.name || '',
+          type: booking.property.type || '',
+          gender: booking.property.gender || 'common',
+          description: booking.property.description || '',
+          location_id: booking.property.location_id || null,
+          address: booking.property.address || '',
+          latitude: booking.property.latitude || null,
+          longitude: booking.property.longitude || null,
+          daily_price: booking.property.daily_price || null,
+          monthly_price: booking.property.monthly_price || 0,
+          is_verified: booking.property.is_verified || false,
+          created_at: booking.property.created_at || '',
+          updated_at: booking.property.updated_at || ''
+        } : null,
+        user: booking.user ? {
+          id: booking.user.id || '',
+          full_name: booking.user.full_name || '',
+          role: booking.user.role || 'student',
+          phone: booking.user.phone || '',
+          email: booking.user.email || '',
+          avatar_url: booking.user.avatar_url || '',
+          created_at: booking.user.created_at || '',
+          updated_at: booking.user.updated_at || ''
+        } : null
+      };
+    });
+  };
+
   const updateBookingStatus = async (id: string, status: 'confirmed' | 'cancelled') => {
     try {
       const { error } = await supabase
@@ -201,7 +190,6 @@ const MerchantDashboard = () => {
 
       if (error) throw error;
 
-      // Update the local state
       setBookings(prev => 
         prev.map(booking => 
           booking.id === id ? { ...booking, status } : booking
