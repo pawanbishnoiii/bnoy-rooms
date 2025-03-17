@@ -4,7 +4,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Google, Facebook, Lock, Mail } from 'lucide-react';
+import { Mail, Lock, LogIn, User2 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -87,7 +87,7 @@ const Login = () => {
               onClick={handleGoogleSignIn}
               disabled={isLoading}
             >
-              <Google className="mr-2 h-4 w-4" />
+              <User2 className="mr-2 h-4 w-4" />
               Sign in with Google
             </Button>
             <Button
@@ -97,7 +97,7 @@ const Login = () => {
               onClick={handleFacebookSignIn}
               disabled={isLoading}
             >
-              <Facebook className="mr-2 h-4 w-4" />
+              <LogIn className="mr-2 h-4 w-4" />
               Sign in with Facebook
             </Button>
 

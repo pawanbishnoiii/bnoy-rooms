@@ -4,7 +4,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Google, Facebook, Lock, Mail, User } from 'lucide-react';
+import { Mail, Lock, User, User2, LogIn } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -93,7 +93,7 @@ const Register = () => {
               onClick={handleGoogleSignIn}
               disabled={isLoading}
             >
-              <Google className="mr-2 h-4 w-4" />
+              <User2 className="mr-2 h-4 w-4" />
               Sign up with Google
             </Button>
             <Button
@@ -103,7 +103,7 @@ const Register = () => {
               onClick={handleFacebookSignIn}
               disabled={isLoading}
             >
-              <Facebook className="mr-2 h-4 w-4" />
+              <LogIn className="mr-2 h-4 w-4" />
               Sign up with Facebook
             </Button>
 
