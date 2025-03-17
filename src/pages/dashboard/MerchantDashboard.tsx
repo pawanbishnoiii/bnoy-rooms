@@ -79,11 +79,11 @@ const MerchantDashboard = () => {
           created_at: property.location.created_at,
         } : undefined,
         images: property.images?.map(img => ({
-          id: img.id,
-          property_id: img.property_id,
+          id: img.id || '',
+          property_id: img.property_id || '',
           image_url: img.image_url,
           is_primary: img.is_primary || false,
-          created_at: img.created_at,
+          created_at: img.created_at || '',
         })) || [],
       }));
       
@@ -116,8 +116,8 @@ const MerchantDashboard = () => {
           .from('bookings')
           .select(`
             *,
-            property:properties(*),
-            user:profiles(*)
+            property:properties(id, name, type, gender, address),
+            user:profiles(id, full_name, role, phone, email, avatar_url, created_at, updated_at)
           `)
           .in('property_id', propertyIds.map(p => p.id))
           .order('created_at', { ascending: false });
@@ -125,36 +125,58 @@ const MerchantDashboard = () => {
         if (error) throw error;
         
         // Transform the data to match our Booking type
-        const formattedBookings: Booking[] = (data || []).map(booking => ({
-          ...booking,
-          property: booking.property ? {
-            id: booking.property.id,
-            merchant_id: booking.property.merchant_id,
-            name: booking.property.name,
-            type: booking.property.type,
-            gender: booking.property.gender,
-            description: booking.property.description,
-            location_id: booking.property.location_id,
-            address: booking.property.address,
-            latitude: booking.property.latitude,
-            longitude: booking.property.longitude,
-            daily_price: booking.property.daily_price,
-            monthly_price: booking.property.monthly_price,
-            is_verified: booking.property.is_verified,
-            created_at: booking.property.created_at,
-            updated_at: booking.property.updated_at,
-          } : undefined,
-          user: booking.user ? {
-            id: booking.user.id,
-            full_name: booking.user.full_name,
-            role: booking.user.role,
-            phone: booking.user.phone,
-            email: booking.user.email,
-            avatar_url: booking.user.avatar_url,
-            created_at: booking.user.created_at,
-            updated_at: booking.user.updated_at,
-          } : undefined,
-        }));
+        const formattedBookings: Booking[] = (data || []).map(booking => {
+          // Check if user is an error object and provide default values if needed
+          const userProfile: UserProfile | undefined = 
+            booking.user && typeof booking.user === 'object' && !('message' in booking.user) ? 
+              {
+                id: booking.user.id || '',
+                full_name: booking.user.full_name || null,
+                role: booking.user.role || 'student',
+                phone: booking.user.phone || null,
+                email: booking.user.email || null,
+                avatar_url: booking.user.avatar_url || null,
+                created_at: booking.user.created_at || '',
+                updated_at: booking.user.updated_at || '',
+              } : undefined;
+          
+          // Check if property is an error object and provide default values
+          const propertyData: Property | undefined = 
+            booking.property && typeof booking.property === 'object' && !('message' in booking.property) ?
+              {
+                id: booking.property.id || '',
+                merchant_id: '',  // Default value
+                name: booking.property.name || '',
+                type: booking.property.type || '',
+                gender: booking.property.gender || 'common',
+                description: null,
+                location_id: null,
+                address: booking.property.address || '',
+                latitude: null,
+                longitude: null,
+                daily_price: null,
+                monthly_price: 0,  // Default value
+                is_verified: false,  // Default value
+                created_at: '',  // Default value
+                updated_at: '',  // Default value
+              } : undefined;
+          
+          return {
+            id: booking.id,
+            property_id: booking.property_id,
+            user_id: booking.user_id,
+            check_in_date: booking.check_in_date,
+            check_out_date: booking.check_out_date,
+            time_frame: booking.time_frame,
+            price_per_unit: booking.price_per_unit,
+            total_amount: booking.total_amount,
+            status: booking.status || 'pending',
+            created_at: booking.created_at,
+            updated_at: booking.updated_at,
+            property: propertyData,
+            user: userProfile,
+          };
+        });
         
         setBookings(formattedBookings);
       } else {
