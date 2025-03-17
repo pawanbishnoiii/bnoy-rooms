@@ -21,9 +21,12 @@ import {
 } from '@/components/ui/accordion';
 import { Checkbox } from '@/components/ui/checkbox';
 import PropertyCard from '@/components/home/PropertyCard';
-import { MapPin, Search, SlidersHorizontal, X } from 'lucide-react';
+import { MapPin, Search, SlidersHorizontal, X, Map, List } from 'lucide-react';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
+import PropertyMap from '@/components/maps/PropertyMap';
+import AIRecommendations from '@/components/properties/AIRecommendations';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface FiltersState {
   gender: string;
@@ -32,16 +35,19 @@ interface FiltersState {
   timeFrame: string;
   facilities: string[];
   searchTerm: string;
+  propertyType: string;
 }
 
 const PropertiesPage = () => {
+  const { user } = useAuth();
   const [properties, setProperties] = useState<Property[]>([]);
   const [facilities, setFacilities] = useState<Facility[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
   const [loading, setLoading] = useState(true);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
   const [propertyTypes, setPropertyTypes] = useState<string[]>([
-    'PG', 'Hostel', 'Independent Room', 'Rented House'
+    'PG', 'Hostel', 'Independent Room', 'Rented House', 'Hotel'
   ]);
   
   const [filters, setFilters] = useState<FiltersState>({
@@ -51,6 +57,7 @@ const PropertiesPage = () => {
     timeFrame: 'monthly',
     facilities: [],
     searchTerm: '',
+    propertyType: '',
   });
 
   // Max price for the range slider
@@ -70,8 +77,10 @@ const PropertiesPage = () => {
         .select(`
           *,
           location:locations(*),
-          facilities:property_facilities(facility:facilities(*))
-        `);
+          facilities:property_facilities(facility:facilities(*)),
+          images:property_images(image_url, is_primary)
+        `)
+        .eq('is_verified', true);
 
       if (error) {
         throw error;
@@ -160,12 +169,18 @@ const PropertiesPage = () => {
       timeFrame: 'monthly',
       facilities: [],
       searchTerm: '',
+      propertyType: '',
     });
   };
 
   const filteredProperties = properties.filter(property => {
     // Gender filter
     if (filters.gender && property.gender !== filters.gender) {
+      return false;
+    }
+
+    // Property type filter
+    if (filters.propertyType && property.type !== filters.propertyType) {
       return false;
     }
 
@@ -209,11 +224,29 @@ const PropertiesPage = () => {
     setFiltersOpen(!filtersOpen);
   };
 
+  const toggleViewMode = () => {
+    setViewMode(viewMode === 'list' ? 'map' : 'list');
+  };
+
   return (
     <>
       <Navbar />
       <div className="min-h-screen bg-bnoy-50/30 pt-24 pb-16">
         <div className="container mx-auto px-4">
+          {user && (
+            <AIRecommendations 
+              userPreferences={{
+                gender: filters.gender as any,
+                budget: filters.priceRange[1],
+                location: locations.find(loc => loc.id === filters.location)?.name,
+                propertyType: filters.propertyType,
+                amenities: filters.facilities.map(id => 
+                  facilities.find(f => f.id === id)?.name || ''
+                ).filter(Boolean)
+              }}
+            />
+          )}
+
           {/* Search and filter bar */}
           <div className="mb-8 relative">
             <div className="flex items-center space-x-2 mb-4">
@@ -233,6 +266,23 @@ const PropertiesPage = () => {
               >
                 <SlidersHorizontal size={16} />
                 <span className="hidden md:inline">Filters</span>
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={toggleViewMode}
+                className="flex items-center gap-2"
+              >
+                {viewMode === 'list' ? (
+                  <>
+                    <Map size={16} />
+                    <span className="hidden md:inline">Map View</span>
+                  </>
+                ) : (
+                  <>
+                    <List size={16} />
+                    <span className="hidden md:inline">List View</span>
+                  </>
+                )}
               </Button>
             </div>
 
@@ -267,6 +317,25 @@ const PropertiesPage = () => {
                           <SelectItem value="boys">Boys only</SelectItem>
                           <SelectItem value="girls">Girls only</SelectItem>
                           <SelectItem value="common">Common</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Property Type filter */}
+                    <div>
+                      <label className="text-sm font-medium mb-2 block">Property Type</label>
+                      <Select 
+                        value={filters.propertyType} 
+                        onValueChange={(value) => handleFilterChange('propertyType', value)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="All types" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="">All types</SelectItem>
+                          {propertyTypes.map(type => (
+                            <SelectItem key={type} value={type}>{type}</SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </div>
@@ -361,7 +430,7 @@ const PropertiesPage = () => {
             )}
 
             {/* Filter tags */}
-            {(filters.gender || filters.location || filters.facilities.length > 0) && (
+            {(filters.gender || filters.location || filters.propertyType || filters.facilities.length > 0) && (
               <div className="flex flex-wrap gap-2 mb-6">
                 {filters.gender && (
                   <div className="bg-secondary py-1 px-3 rounded-full text-xs flex items-center">
@@ -370,6 +439,17 @@ const PropertiesPage = () => {
                       size={14}
                       className="ml-1 cursor-pointer"
                       onClick={() => handleFilterChange('gender', '')}
+                    />
+                  </div>
+                )}
+                
+                {filters.propertyType && (
+                  <div className="bg-secondary py-1 px-3 rounded-full text-xs flex items-center">
+                    {filters.propertyType}
+                    <X
+                      size={14}
+                      className="ml-1 cursor-pointer"
+                      onClick={() => handleFilterChange('propertyType', '')}
                     />
                   </div>
                 )}
@@ -401,7 +481,7 @@ const PropertiesPage = () => {
                   );
                 })}
                 
-                {(filters.gender || filters.location || filters.facilities.length > 0) && (
+                {(filters.gender || filters.location || filters.propertyType || filters.facilities.length > 0) && (
                   <button
                     onClick={resetFilters}
                     className="text-xs text-bnoy-600 hover:underline"
@@ -421,43 +501,57 @@ const PropertiesPage = () => {
             </p>
           </div>
 
+          {/* Map View */}
+          {viewMode === 'map' && (
+            <div className="mb-8">
+              <PropertyMap 
+                properties={filteredProperties} 
+                height="600px"
+              />
+            </div>
+          )}
+
           {/* Properties grid */}
-          {loading ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {[...Array(8)].map((_, i) => (
-                <div key={i} className="bg-background rounded-xl h-80 animate-pulse"></div>
-              ))}
-            </div>
-          ) : filteredProperties.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {filteredProperties.map(property => (
-                <PropertyCard
-                  key={property.id}
-                  id={property.id}
-                  name={property.name}
-                  type={property.type}
-                  location={property.location?.name || property.address || ''}
-                  price={filters.timeFrame === 'daily' ? (property.daily_price || Math.round(property.monthly_price / 30)) : property.monthly_price}
-                  rating={4.5} // Mock data, would come from reviews
-                  reviewCount={12} // Mock data, would come from reviews
-                  image={property.images?.[0]?.image_url || "https://images.unsplash.com/photo-1555854877-bab0e564b8d5?ixlib=rb-4.0.3"}
-                  facilities={property.facilities?.map(f => f.name) || []}
-                  distance="1.2 km" // Mock data, would be calculated
-                  isVerified={property.is_verified}
-                />
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-12">
-              <div className="mb-4 text-muted-foreground">
-                <Search size={40} className="mx-auto" />
+          {viewMode === 'list' && (
+            loading ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                {[...Array(8)].map((_, i) => (
+                  <div key={i} className="bg-background rounded-xl h-80 animate-pulse"></div>
+                ))}
               </div>
-              <h3 className="text-xl font-medium mb-2">No properties found</h3>
-              <p className="text-muted-foreground mb-4">
-                Try adjusting your filters or search criteria
-              </p>
-              <Button onClick={resetFilters}>Clear all filters</Button>
-            </div>
+            ) : filteredProperties.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                {filteredProperties.map(property => (
+                  <PropertyCard
+                    key={property.id}
+                    id={property.id}
+                    name={property.name}
+                    type={property.type}
+                    location={property.location?.name || property.address || ''}
+                    price={filters.timeFrame === 'daily' ? (property.daily_price || Math.round(property.monthly_price / 30)) : property.monthly_price}
+                    rating={4.5} // Mock data, would come from reviews
+                    reviewCount={12} // Mock data, would come from reviews
+                    image={property.images?.find(img => img.is_primary)?.image_url || 
+                           property.images?.[0]?.image_url || 
+                           "https://images.unsplash.com/photo-1555854877-bab0e564b8d5?ixlib=rb-4.0.3"}
+                    facilities={property.facilities?.map(f => f.name) || []}
+                    distance="1.2 km" // Mock data, would be calculated
+                    isVerified={property.is_verified}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-12">
+                <div className="mb-4 text-muted-foreground">
+                  <Search size={40} className="mx-auto" />
+                </div>
+                <h3 className="text-xl font-medium mb-2">No properties found</h3>
+                <p className="text-muted-foreground mb-4">
+                  Try adjusting your filters or search criteria
+                </p>
+                <Button onClick={resetFilters}>Clear all filters</Button>
+              </div>
+            )
           )}
         </div>
       </div>
