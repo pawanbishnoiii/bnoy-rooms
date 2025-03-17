@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
-import { Property, Booking } from '@/types';
+import { Property, Booking, UserProfile, Location } from '@/types';
 import { Link } from 'react-router-dom';
 
 const MerchantDashboard = () => {
@@ -60,14 +60,34 @@ const MerchantDashboard = () => {
         .from('properties')
         .select(`
           *,
-          location:locations(name),
-          images:property_images(image_url, is_primary)
+          location:locations(*),
+          images:property_images(*)
         `)
         .eq('merchant_id', user?.id)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setProperties(data || []);
+      
+      // Transform the data to match our Property type
+      const formattedProperties: Property[] = (data || []).map(property => ({
+        ...property,
+        location: property.location ? {
+          id: property.location.id,
+          name: property.location.name,
+          latitude: property.location.latitude,
+          longitude: property.location.longitude,
+          created_at: property.location.created_at,
+        } : undefined,
+        images: property.images?.map(img => ({
+          id: img.id,
+          property_id: img.property_id,
+          image_url: img.image_url,
+          is_primary: img.is_primary || false,
+          created_at: img.created_at,
+        })) || [],
+      }));
+      
+      setProperties(formattedProperties);
     } catch (error: any) {
       console.error('Error fetching properties:', error);
       toast({
@@ -96,14 +116,47 @@ const MerchantDashboard = () => {
           .from('bookings')
           .select(`
             *,
-            property:properties(name),
-            user:profiles(full_name, email, phone)
+            property:properties(*),
+            user:profiles(*)
           `)
           .in('property_id', propertyIds.map(p => p.id))
           .order('created_at', { ascending: false });
 
         if (error) throw error;
-        setBookings(data || []);
+        
+        // Transform the data to match our Booking type
+        const formattedBookings: Booking[] = (data || []).map(booking => ({
+          ...booking,
+          property: booking.property ? {
+            id: booking.property.id,
+            merchant_id: booking.property.merchant_id,
+            name: booking.property.name,
+            type: booking.property.type,
+            gender: booking.property.gender,
+            description: booking.property.description,
+            location_id: booking.property.location_id,
+            address: booking.property.address,
+            latitude: booking.property.latitude,
+            longitude: booking.property.longitude,
+            daily_price: booking.property.daily_price,
+            monthly_price: booking.property.monthly_price,
+            is_verified: booking.property.is_verified,
+            created_at: booking.property.created_at,
+            updated_at: booking.property.updated_at,
+          } : undefined,
+          user: booking.user ? {
+            id: booking.user.id,
+            full_name: booking.user.full_name,
+            role: booking.user.role,
+            phone: booking.user.phone,
+            email: booking.user.email,
+            avatar_url: booking.user.avatar_url,
+            created_at: booking.user.created_at,
+            updated_at: booking.user.updated_at,
+          } : undefined,
+        }));
+        
+        setBookings(formattedBookings);
       } else {
         setBookings([]);
       }

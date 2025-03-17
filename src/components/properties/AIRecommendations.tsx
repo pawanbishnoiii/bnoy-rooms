@@ -44,7 +44,32 @@ const AIRecommendations: React.FC<AIRecommendationsProps> = ({ userPreferences }
         throw new Error(result.error);
       }
 
-      setRecommendations(result.data);
+      // Transform the data to match our Property interface
+      const transformedData: Property[] = (result.data || []).map((item: any) => ({
+        ...item,
+        // Ensure all required fields from the Property interface are present
+        location: item.location ? {
+          id: item.location.id || '',
+          name: item.location.name || '',
+          latitude: item.location.latitude || null,
+          longitude: item.location.longitude || null,
+          created_at: item.location.created_at || '',
+        } : undefined,
+        facilities: item.facilities?.map((f: any) => ({
+          id: f.id || '',
+          name: f.name || '',
+          created_at: f.created_at || '',
+        })) || [],
+        images: item.images?.map((img: any) => ({
+          id: img.id || '',
+          property_id: img.property_id || item.id,
+          image_url: img.image_url || '',
+          is_primary: img.is_primary || false,
+          created_at: img.created_at || '',
+        })) || [],
+      }));
+
+      setRecommendations(transformedData);
     } catch (error: any) {
       console.error('Error fetching AI recommendations:', error);
       toast({
@@ -103,7 +128,7 @@ const AIRecommendations: React.FC<AIRecommendationsProps> = ({ userPreferences }
                 rating={4.5} // Mock data
                 reviewCount={12} // Mock data
                 image={property.images?.[0]?.image_url || "https://images.unsplash.com/photo-1555854877-bab0e564b8d5?ixlib=rb-4.0.3"}
-                facilities={property.facilities?.map((f: any) => f.facility.name) || []}
+                facilities={property.facilities?.map(f => f.name) || []}
                 distance="1.2 km" // Mock data
                 isVerified={property.is_verified}
               />

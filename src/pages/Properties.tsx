@@ -78,7 +78,7 @@ const PropertiesPage = () => {
           *,
           location:locations(*),
           facilities:property_facilities(facility:facilities(*)),
-          images:property_images(image_url, is_primary)
+          images:property_images(*)
         `)
         .eq('is_verified', true);
 
@@ -88,10 +88,25 @@ const PropertiesPage = () => {
 
       if (data) {
         // Transform the data to match our Property type
-        const formattedProperties = data.map(property => ({
+        const formattedProperties: Property[] = data.map(property => ({
           ...property,
+          location: property.location ? {
+            id: property.location.id,
+            name: property.location.name,
+            latitude: property.location.latitude,
+            longitude: property.location.longitude,
+            created_at: property.location.created_at,
+          } : undefined,
           facilities: property.facilities?.map(item => item.facility) || [],
+          images: property.images?.map(img => ({
+            id: img.id,
+            property_id: img.property_id,
+            image_url: img.image_url,
+            is_primary: img.is_primary || false,
+            created_at: img.created_at,
+          })) || [],
         }));
+        
         setProperties(formattedProperties);
       }
     } catch (error) {
