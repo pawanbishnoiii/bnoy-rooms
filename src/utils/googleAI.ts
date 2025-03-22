@@ -1,6 +1,6 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { Property, Location } from '@/types';
+import { Property, Location, Facility } from '@/types';
 
 // Google AI API Key
 const GOOGLE_AI_API_KEY = 'AIzaSyA88AkZfdrXeNDnRX0R45m1rw_GkstEb_U';
@@ -117,6 +117,12 @@ export const getAIRecommendations = async (options: RecommendationOptions = {}) 
           longitude: property.longitude || null,
           created_at: property.created_at || '',
         } : undefined,
+        // Map facilities properly to match Facility type
+        facilities: property.facilities ? property.facilities.map((f: any) => ({
+          id: f.facility.id,
+          name: f.facility.name,
+          created_at: f.facility.created_at
+        })) : [],
         // Initialize with default matchScore of 100
         matchScore: 100
       };
@@ -157,7 +163,7 @@ export const getAIRecommendations = async (options: RecommendationOptions = {}) 
         
         // Amenities match
         if (options.userPreferences?.amenities && options.userPreferences.amenities.length > 0) {
-          const propertyFacilities = property.facilities?.map((f: any) => f.facility.name.toLowerCase()) || [];
+          const propertyFacilities = property.facilities?.map(f => f.name.toLowerCase()) || [];
           const matchedAmenities = options.userPreferences.amenities.filter(
             amenity => propertyFacilities.some(f => f.includes(amenity.toLowerCase()))
           );
