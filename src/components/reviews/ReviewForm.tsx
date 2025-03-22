@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -35,63 +36,66 @@ const ReviewForm: React.FC<ReviewFormProps> = ({ propertyId, onReviewSubmitted }
   });
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
-  if (!user) return;
-  
-  try {
-    setIsSubmitting(true);
+    if (!user) return;
     
-    const { data, error } = await supabase
-      .from('reviews')
-      .insert({
-        property_id: propertyId,
-        user_id: user.id,
-        rating: values.rating,
-        comment: values.comment
-      })
-      .select('*, user:profiles(*)')
-      .single();
+    try {
+      setIsSubmitting(true);
       
-    if (error) throw error;
-    
-    // Transform the review data to match the Review type
-    const newReview: Review = {
-      id: data.id,
-      property_id: data.property_id,
-      user_id: data.user_id,
-      rating: data.rating,
-      comment: data.comment,
-      created_at: data.created_at,
-      updated_at: data.updated_at,
-      user: data.user && !data.user.error ? {
-        id: data.user.id || '',
-        full_name: data.user.full_name || null,
-        role: data.user.role as UserRole || 'student',
-        phone: data.user.phone || null,
-        email: data.user.email || null,
-        avatar_url: data.user.avatar_url || null,
-        created_at: data.user.created_at || '',
-        updated_at: data.user.updated_at || ''
-      } : undefined
-    };
-    
-    toast({
-      title: "Review Submitted",
-      description: "Thank you for your feedback!"
-    });
-    
-    onReviewSubmitted(newReview);
-    form.reset();
-  } catch (error: any) {
-    console.error('Error submitting review:', error);
-    toast({
-      title: "Submission Failed",
-      description: error.message || "There was an error submitting your review.",
-      variant: "destructive"
-    });
-  } finally {
-    setIsSubmitting(false);
-  }
-};
+      const { data, error } = await supabase
+        .from('reviews')
+        .insert({
+          property_id: propertyId,
+          user_id: user.id,
+          rating: values.rating,
+          comment: values.comment
+        })
+        .select('*, user:profiles(*)')
+        .single();
+        
+      if (error) throw error;
+      
+      // Check if data and user data exist before accessing properties
+      const userData = data.user && !data.user.error ? data.user : null;
+      
+      // Transform the review data to match the Review type
+      const newReview: Review = {
+        id: data.id,
+        property_id: data.property_id,
+        user_id: data.user_id,
+        rating: data.rating,
+        comment: data.comment,
+        created_at: data.created_at,
+        updated_at: data.updated_at,
+        user: userData ? {
+          id: userData.id || '',
+          full_name: userData.full_name || null,
+          role: userData.role as UserRole || 'student',
+          phone: userData.phone || null,
+          email: userData.email || null,
+          avatar_url: userData.avatar_url || null,
+          created_at: userData.created_at || '',
+          updated_at: userData.updated_at || ''
+        } : undefined
+      };
+      
+      toast({
+        title: "Review Submitted",
+        description: "Thank you for your feedback!"
+      });
+      
+      onReviewSubmitted(newReview);
+      form.reset();
+    } catch (error: any) {
+      console.error('Error submitting review:', error);
+      toast({
+        title: "Submission Failed",
+        description: error.message || "There was an error submitting your review.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <Form {...form}>
@@ -129,7 +133,7 @@ const ReviewForm: React.FC<ReviewFormProps> = ({ propertyId, onReviewSubmitted }
             </FormItem>
           )}
         />
-        <Button type="submit" disabled={isSubmitting}>
+        <Button type="submit" disabled={isSubmitting} className="w-full transition-all hover:scale-105">
           {isSubmitting ? 'Submitting...' : 'Submit Review'}
         </Button>
       </form>
