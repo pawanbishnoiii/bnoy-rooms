@@ -34,6 +34,10 @@ const App = () => (
             <Route path="/auth/callback" element={<AuthCallback />} />
             <Route path="/login" element={<Navigate to="/auth/login" replace />} />
             <Route path="/register" element={<Navigate to="/auth/register" replace />} />
+            
+            {/* Fix login route to make it accessible directly */}
+            <Route path="login" element={<Login />} />
+            
             <Route 
               path="/dashboard/student" 
               element={
