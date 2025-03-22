@@ -1,6 +1,6 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { Property, Location, Facility } from '@/types';
+import { Property, Location, Facility, PropertyImage } from '@/types';
 
 // Google AI API Key
 const GOOGLE_AI_API_KEY = 'AIzaSyA88AkZfdrXeNDnRX0R45m1rw_GkstEb_U';
@@ -122,6 +122,14 @@ export const getAIRecommendations = async (options: RecommendationOptions = {}) 
           id: f.facility.id,
           name: f.facility.name,
           created_at: f.facility.created_at
+        })) : [],
+        // Map images properly to match PropertyImage type
+        images: property.images ? property.images.map((img: any) => ({
+          id: img.id || `img-${Math.random().toString(36).substring(2, 9)}`,
+          property_id: img.property_id || property.id,
+          image_url: img.image_url,
+          is_primary: img.is_primary || false,
+          created_at: img.created_at || property.created_at
         })) : [],
         // Initialize with default matchScore of 100
         matchScore: 100
