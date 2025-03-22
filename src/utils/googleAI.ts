@@ -1,6 +1,6 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { Property } from '@/types';
+import { Property, Location } from '@/types';
 
 // Google AI API Key
 const GOOGLE_AI_API_KEY = 'AIzaSyA88AkZfdrXeNDnRX0R45m1rw_GkstEb_U';
@@ -104,13 +104,28 @@ export const getAIRecommendations = async (options: RecommendationOptions = {}) 
     console.log('Properties for recommendation:', propertyDescriptions);
 
     // Simulate AI recommendation by sorting properties based on preferences
-    // Cast properties to PropertyWithScore to add matchScore
-    let recommendedProperties: PropertyWithScore[] = [...properties] as PropertyWithScore[];
+    // Create a new array of PropertyWithScore objects with properly mapped properties
+    const recommendedProperties: PropertyWithScore[] = properties.map(property => {
+      // Create a property object that conforms to the PropertyWithScore interface
+      return {
+        ...property,
+        // Ensure location has all required fields from the Location type
+        location: property.location ? {
+          id: property.location_id || '',
+          name: property.location.name || '',
+          latitude: property.latitude || null,
+          longitude: property.longitude || null,
+          created_at: property.created_at || '',
+        } : undefined,
+        // Initialize with default matchScore of 100
+        matchScore: 100
+      };
+    });
 
     // Apply advanced sorting logic based on preferences
     if (options.userPreferences) {
       // Calculate a "match score" for each property
-      recommendedProperties = recommendedProperties.map(property => {
+      recommendedProperties.forEach(property => {
         let matchScore = 100; // Start with a perfect score
         
         // Gender match (highest priority)
@@ -154,11 +169,9 @@ export const getAIRecommendations = async (options: RecommendationOptions = {}) 
         // Add random factor for variety (±5 points)
         matchScore += (Math.random() * 10) - 5;
         
-        return {
-          ...property,
-          matchScore,
-          average_rating: (Math.floor(Math.random() * 20) + 30) / 10 // Random rating between 3.0 and 5.0
-        };
+        // Update the property's matchScore
+        property.matchScore = matchScore;
+        property.average_rating = (Math.floor(Math.random() * 20) + 30) / 10; // Random rating between 3.0 and 5.0
       });
       
       // Sort by match score
@@ -166,7 +179,7 @@ export const getAIRecommendations = async (options: RecommendationOptions = {}) 
     }
 
     // Add AI-generated insights for each property
-    recommendedProperties = recommendedProperties.map(property => {
+    const propertiesWithInsights = recommendedProperties.map(property => {
       // Generate property strengths
       const strengths = [];
       
@@ -193,10 +206,10 @@ export const getAIRecommendations = async (options: RecommendationOptions = {}) 
     });
 
     // Limit the results
-    recommendedProperties = recommendedProperties.slice(0, options.limit || 5);
+    const finalRecommendations = propertiesWithInsights.slice(0, options.limit || 5);
 
     return {
-      data: recommendedProperties,
+      data: finalRecommendations,
       message: 'AI recommendations generated successfully'
     };
   } catch (error: any) {
