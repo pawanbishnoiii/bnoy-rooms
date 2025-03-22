@@ -9,6 +9,8 @@ import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import Login from "./pages/auth/Login";
 import Register from "./pages/auth/Register";
+import ForgotPassword from "./pages/auth/ForgotPassword";
+import ResetPassword from "./pages/auth/ResetPassword";
 import AuthCallback from "./pages/auth/AuthCallback";
 import MerchantDashboard from "./pages/dashboard/MerchantDashboard";
 import UserDashboard from "./pages/dashboard/UserDashboard";
@@ -33,15 +35,19 @@ const App = () => (
             {/* Auth routes */}
             <Route path="/auth/login" element={<Login />} />
             <Route path="/auth/register" element={<Register />} />
+            <Route path="/auth/forgot-password" element={<ForgotPassword />} />
+            <Route path="/auth/reset-password" element={<ResetPassword />} />
             <Route path="/auth/callback" element={<AuthCallback />} />
             
             {/* Redirects for convenience */}
             <Route path="/login" element={<Navigate to="/auth/login" replace />} />
             <Route path="/register" element={<Navigate to="/auth/register" replace />} />
+            <Route path="/forgot-password" element={<Navigate to="/auth/forgot-password" replace />} />
+            <Route path="/reset-password" element={<Navigate to="/auth/reset-password" replace />} />
             
-            {/* Dashboard routes */}
+            {/* Student Dashboard routes */}
             <Route 
-              path="/dashboard/student" 
+              path="/student/dashboard" 
               element={
                 <ProtectedRoute allowedRoles={['student']}>
                   <UserDashboard />
@@ -49,7 +55,41 @@ const App = () => (
               } 
             />
             <Route 
-              path="/dashboard/merchant" 
+              path="/student/bookings" 
+              element={
+                <ProtectedRoute allowedRoles={['student']}>
+                  <Navigate to="/student/dashboard" replace />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/student/favorites" 
+              element={
+                <ProtectedRoute allowedRoles={['student']}>
+                  <Navigate to="/student/dashboard" replace />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/student/reviews" 
+              element={
+                <ProtectedRoute allowedRoles={['student']}>
+                  <Navigate to="/student/dashboard" replace />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/student/settings" 
+              element={
+                <ProtectedRoute allowedRoles={['student']}>
+                  <Navigate to="/student/dashboard" replace />
+                </ProtectedRoute>
+              } 
+            />
+            
+            {/* Merchant Dashboard routes */}
+            <Route 
+              path="/merchant/dashboard" 
               element={
                 <ProtectedRoute allowedRoles={['merchant']}>
                   <MerchantDashboard />
@@ -57,10 +97,108 @@ const App = () => (
               } 
             />
             <Route 
-              path="/dashboard/admin" 
+              path="/merchant/properties" 
+              element={
+                <ProtectedRoute allowedRoles={['merchant']}>
+                  <Navigate to="/merchant/dashboard" replace />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/merchant/properties/new" 
+              element={
+                <ProtectedRoute allowedRoles={['merchant']}>
+                  <Navigate to="/merchant/dashboard" replace />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/merchant/bookings" 
+              element={
+                <ProtectedRoute allowedRoles={['merchant']}>
+                  <Navigate to="/merchant/dashboard" replace />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/merchant/reviews" 
+              element={
+                <ProtectedRoute allowedRoles={['merchant']}>
+                  <Navigate to="/merchant/dashboard" replace />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/merchant/settings" 
+              element={
+                <ProtectedRoute allowedRoles={['merchant']}>
+                  <Navigate to="/merchant/dashboard" replace />
+                </ProtectedRoute>
+              } 
+            />
+            
+            {/* Admin Dashboard routes */}
+            <Route 
+              path="/admin/dashboard" 
               element={
                 <ProtectedRoute allowedRoles={['admin']}>
                   <AdminDashboard />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/admin/users" 
+              element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <Navigate to="/admin/dashboard" replace />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/admin/properties" 
+              element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <Navigate to="/admin/dashboard" replace />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/admin/merchants" 
+              element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <Navigate to="/admin/dashboard" replace />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/admin/bookings" 
+              element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <Navigate to="/admin/dashboard" replace />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/admin/reviews" 
+              element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <Navigate to="/admin/dashboard" replace />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/admin/locations" 
+              element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <Navigate to="/admin/dashboard" replace />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/admin/settings" 
+              element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <Navigate to="/admin/dashboard" replace />
                 </ProtectedRoute>
               } 
             />

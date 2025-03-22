@@ -1,522 +1,642 @@
-import { useState, useEffect } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+
+import React, { useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
-import { motion } from 'framer-motion';
-import { Bookmark, Calendar, Clock, Settings, User, Building, MapPin, PieChart, Book, Heart } from 'lucide-react';
-import AIRecommendations from '@/components/properties/AIRecommendations';
-
-interface ExtendedUserProfile {
-  id: string;
-  full_name: string | null;
-  role: string;
-  phone: string | null;
-  email: string | null;
-  avatar_url: string | null;
-  created_at: string;
-  updated_at: string;
-  gender?: 'boys' | 'girls' | 'common';
-}
-
-interface BookingWithProperty {
-  id: string;
-  property_id: string;
-  user_id: string;
-  check_in_date: string;
-  check_out_date: string | null;
-  time_frame: 'daily' | 'monthly';
-  price_per_unit: number;
-  total_amount: number;
-  status: string;
-  created_at: string;
-  updated_at: string;
-  property: {
-    id: string;
-    name: string;
-    address: string;
-    type: string;
-    [key: string]: any;
-  } | null;
-}
+import { useNavigate } from 'react-router-dom';
+import DashboardLayout from '@/components/layout/DashboardLayout';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import {
+  Search,
+  Building,
+  BookMarked,
+  MapPin,
+  Star,
+  Calendar,
+  Banknote,
+  Home,
+  History,
+  ArrowRight,
+  Heart,
+  MessageSquare,
+  User,
+  BookOpen
+} from 'lucide-react';
+import { Property, Booking } from '@/types';
 
 const UserDashboard = () => {
   const { user, profile } = useAuth();
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState('overview');
-  const [recentBookings, setRecentBookings] = useState<BookingWithProperty[]>([]);
-  const [favoriteProperties, setFavoriteProperties] = useState<any[]>([]);
+  const navigate = useNavigate();
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [recentSearches, setRecentSearches] = useState<any[]>([]);
+  const [favoriteProperties, setFavoriteProperties] = useState<Property[]>([]);
+  const [recommendedProperties, setRecommendedProperties] = useState<Property[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const extendedProfile = profile as ExtendedUserProfile | null;
 
   useEffect(() => {
-    const fetchUserData = async () => {
-      if (!user) return;
-      
+    if (user) {
+      fetchDashboardData();
+    }
+  }, [user]);
+
+  const fetchDashboardData = async () => {
+    try {
       setIsLoading(true);
-      try {
-        const { data: bookingsData, error: bookingsError } = await supabase
-          .from('bookings')
-          .select(`
-            *,
-            property:properties(*)
-          `)
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false })
-          .limit(3);
-          
-        if (bookingsError) throw bookingsError;
-        
-        const { data: favoritesData, error: favoritesError } = await supabase
-          .from('properties')
-          .select('*')
-          .limit(4);
-          
-        if (favoritesError) throw favoritesError;
-        
-        const processedBookings: BookingWithProperty[] = bookingsData.map(booking => {
-          const property = booking.property || {
-            id: '',
-            name: 'Unknown Property',
-            address: 'Address not available',
-            type: 'Unknown type'
-          };
-          
-          return {
-            ...booking,
-            property: {
-              id: property.id || '',
-              name: property.name || 'Unknown Property',
-              address: property.address || 'Address not available',
-              type: property.type || 'Unknown type',
-              ...property
-            }
-          };
-        });
-        
-        setRecentBookings(processedBookings);
-        setFavoriteProperties(favoritesData || []);
-      } catch (error: any) {
-        console.error('Error fetching user data:', error);
-        toast({
-          title: 'Error loading data',
-          description: error.message || 'Could not load your dashboard data',
-          variant: 'destructive',
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    
-    fetchUserData();
-  }, [user, toast]);
 
-  if (!user || !profile) {
-    return (
-      <div className="container py-10">
-        <Card>
-          <CardHeader>
-            <CardTitle>Access Denied</CardTitle>
-            <CardDescription>Please log in to view your dashboard</CardDescription>
-          </CardHeader>
-          <CardFooter>
-            <Button onClick={() => window.location.href = '/auth/login'}>Log In</Button>
-          </CardFooter>
-        </Card>
-      </div>
-    );
-  }
+      // Get user's bookings
+      const { data: bookingsData, error: bookingsError } = await supabase
+        .from('bookings')
+        .select(`
+          *,
+          property:properties(
+            id, 
+            name, 
+            address,
+            monthly_price,
+            daily_price,
+            type,
+            images:property_images(*)
+          )
+        `)
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
 
-  const container = {
-    hidden: { opacity: 0 },
-    show: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.1
-      }
+      if (bookingsError) throw bookingsError;
+
+      // For now, let's just fetch some properties as favorites and recommended (placeholder)
+      const { data: allProperties, error: propertiesError } = await supabase
+        .from('properties')
+        .select(`
+          *,
+          images:property_images(*),
+          location:locations(name)
+        `)
+        .is('is_verified', true)
+        .limit(6);
+
+      if (propertiesError) throw propertiesError;
+
+      // Mock search history for now
+      const mockSearches = [
+        { id: 1, query: 'PG near Delhi University', date: new Date().toISOString() },
+        { id: 2, query: 'Affordable hostel in Mumbai', date: new Date(Date.now() - 86400000).toISOString() },
+        { id: 3, query: 'Girls hostel near Bangalore', date: new Date(Date.now() - 172800000).toISOString() },
+      ];
+
+      // Set data to state
+      setBookings(bookingsData || []);
+      setFavoriteProperties(allProperties?.slice(0, 3) || []);
+      setRecommendedProperties(allProperties?.slice(3) || []);
+      setRecentSearches(mockSearches);
+
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error);
+      toast({
+        title: 'Error loading data',
+        description: 'Could not load dashboard data. Please try again later.',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const item = {
-    hidden: { opacity: 0, y: 20 },
-    show: { opacity: 1, y: 0 }
+  const getBookingStatusClass = (status: string) => {
+    switch (status) {
+      case 'confirmed':
+        return 'bg-green-100 text-green-800';
+      case 'pending':
+        return 'bg-amber-100 text-amber-800';
+      case 'cancelled':
+        return 'bg-red-100 text-red-800';
+      case 'completed':
+        return 'bg-blue-100 text-blue-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
   };
 
   return (
-    <div className="container py-8">
-      <motion.div 
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="flex flex-col md:flex-row gap-6 md:items-center justify-between mb-8"
-      >
-        <div>
-          <h1 className="text-4xl font-bold mb-2">Welcome back, {profile?.full_name?.split(' ')[0] || 'Student'}</h1>
-          <p className="text-muted-foreground">Manage your accommodations and bookings</p>
-        </div>
-        
-        <div className="flex gap-4">
-          <Button variant="outline" className="flex items-center gap-2">
-            <Settings size={16} />
-            <span>Settings</span>
-          </Button>
-          <Button className="flex items-center gap-2">
-            <MapPin size={16} />
-            <span>Find Accommodation</span>
+    <DashboardLayout>
+      <div className="space-y-6">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Student Dashboard</h1>
+            <p className="text-muted-foreground">
+              Welcome back, {profile?.full_name?.split(' ')[0] || 'Student'}
+            </p>
+          </div>
+          <Button 
+            onClick={() => navigate('/properties')} 
+            className="mt-4 md:mt-0"
+          >
+            <Search className="mr-2 h-4 w-4" />
+            Find Accommodation
           </Button>
         </div>
-      </motion.div>
-      
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid grid-cols-3 w-full max-w-md mx-auto">
-          <TabsTrigger value="overview" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-            Overview
-          </TabsTrigger>
-          <TabsTrigger value="bookings" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-            Bookings
-          </TabsTrigger>
-          <TabsTrigger value="favorites" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-            Favorites
-          </TabsTrigger>
-        </TabsList>
-        
-        <TabsContent value="overview" className="space-y-8">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <motion.div
-              variants={item}
-              initial="hidden"
-              animate="show"
-              transition={{ delay: 0.1 }}
-            >
-              <Card className="h-full">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-lg flex items-center">
-                    <User className="mr-2 h-5 w-5 text-primary" />
-                    Profile
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    <div className="flex justify-center mb-4">
-                      <div className="h-20 w-20 rounded-full bg-muted flex items-center justify-center text-2xl font-semibold">
-                        {profile.full_name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'S'}
-                      </div>
-                    </div>
-                    <p className="text-center font-medium text-lg">{profile.full_name || 'Student'}</p>
-                    <p className="text-center text-muted-foreground">{user.email}</p>
-                    <p className="text-center bg-primary/10 text-primary rounded-full py-0.5 px-2 text-xs inline-block mt-1 mx-auto">
-                      {profile.role?.charAt(0).toUpperCase() + profile.role?.slice(1) || 'Student'}
-                    </p>
+
+        {/* Overview Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <Card className="shadow-sm">
+            <CardContent className="pt-6">
+              <div className="flex items-center space-x-2">
+                <div className="p-2 rounded-full bg-blue-100">
+                  <BookMarked className="h-6 w-6 text-blue-600" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Active Bookings</p>
+                  <h3 className="text-2xl font-bold">{bookings.filter(b => b.status === 'confirmed').length}</h3>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card className="shadow-sm">
+            <CardContent className="pt-6">
+              <div className="flex items-center space-x-2">
+                <div className="p-2 rounded-full bg-pink-100">
+                  <Heart className="h-6 w-6 text-pink-600" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Favorites</p>
+                  <h3 className="text-2xl font-bold">{favoriteProperties.length}</h3>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card className="shadow-sm">
+            <CardContent className="pt-6">
+              <div className="flex items-center space-x-2">
+                <div className="p-2 rounded-full bg-green-100">
+                  <History className="h-6 w-6 text-green-600" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Recent Searches</p>
+                  <h3 className="text-2xl font-bold">{recentSearches.length}</h3>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Quick Actions Card */}
+        <Card className="shadow-sm">
+          <CardHeader>
+            <CardTitle>Quick Actions</CardTitle>
+            <CardDescription>Common tasks you might want to perform</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <Button 
+                variant="outline" 
+                className="h-auto flex-col items-start p-4 justify-start"
+                onClick={() => navigate('/properties')}
+              >
+                <div className="flex items-center mb-2">
+                  <Building className="h-5 w-5 mr-2 text-primary" />
+                  <span className="font-medium">Find Rooms</span>
+                </div>
+                <p className="text-xs text-muted-foreground text-left">
+                  Browse available accommodations
+                </p>
+              </Button>
+              
+              <Button 
+                variant="outline" 
+                className="h-auto flex-col items-start p-4 justify-start"
+                onClick={() => navigate('/student/bookings')}
+              >
+                <div className="flex items-center mb-2">
+                  <BookMarked className="h-5 w-5 mr-2 text-primary" />
+                  <span className="font-medium">My Bookings</span>
+                </div>
+                <p className="text-xs text-muted-foreground text-left">
+                  Manage your current bookings
+                </p>
+              </Button>
+              
+              <Button 
+                variant="outline" 
+                className="h-auto flex-col items-start p-4 justify-start"
+                onClick={() => navigate('/student/favorites')}
+              >
+                <div className="flex items-center mb-2">
+                  <Heart className="h-5 w-5 mr-2 text-primary" />
+                  <span className="font-medium">Favorites</span>
+                </div>
+                <p className="text-xs text-muted-foreground text-left">
+                  View your saved properties
+                </p>
+              </Button>
+              
+              <Button 
+                variant="outline" 
+                className="h-auto flex-col items-start p-4 justify-start"
+                onClick={() => navigate('/student/settings')}
+              >
+                <div className="flex items-center mb-2">
+                  <User className="h-5 w-5 mr-2 text-primary" />
+                  <span className="font-medium">My Profile</span>
+                </div>
+                <p className="text-xs text-muted-foreground text-left">
+                  Update your personal details
+                </p>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Main Content Tabs */}
+        <Tabs defaultValue="bookings" className="space-y-4">
+          <TabsList>
+            <TabsTrigger value="bookings">My Bookings</TabsTrigger>
+            <TabsTrigger value="favorites">Favorites</TabsTrigger>
+            <TabsTrigger value="recommended">Recommended</TabsTrigger>
+            <TabsTrigger value="searches">Recent Searches</TabsTrigger>
+          </TabsList>
+
+          {/* Bookings Tab */}
+          <TabsContent value="bookings" className="space-y-4">
+            <Card className="shadow-sm">
+              <CardHeader>
+                <CardTitle>Your Bookings</CardTitle>
+                <CardDescription>Manage your current and upcoming accommodation bookings</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {isLoading ? (
+                  <div className="text-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+                    <p className="mt-2 text-sm text-muted-foreground">Loading your bookings...</p>
                   </div>
-                </CardContent>
-                <CardFooter className="pt-0">
-                  <Button variant="outline" size="sm" className="w-full">
-                    <Settings className="mr-2 h-4 w-4" />
-                    Edit Profile
-                  </Button>
-                </CardFooter>
-              </Card>
-            </motion.div>
-            
-            <motion.div
-              variants={item}
-              initial="hidden"
-              animate="show"
-              transition={{ delay: 0.2 }}
-            >
-              <Card className="h-full">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-lg flex items-center">
-                    <Calendar className="mr-2 h-5 w-5 text-primary" />
-                    Upcoming Stay
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {isLoading ? (
-                    <div className="animate-pulse space-y-3">
-                      <div className="h-4 bg-muted rounded w-3/4"></div>
-                      <div className="h-4 bg-muted rounded w-1/2"></div>
-                      <div className="h-4 bg-muted rounded w-5/6"></div>
-                    </div>
-                  ) : recentBookings.length > 0 ? (
-                    <div>
-                      <h3 className="font-semibold">{recentBookings[0].property?.name || 'Property'}</h3>
-                      <p className="text-muted-foreground text-sm flex items-center mt-1">
-                        <MapPin className="mr-1 h-3 w-3" />
-                        {recentBookings[0].property?.address || 'Address unavailable'}
-                      </p>
-                      
-                      <div className="mt-3 space-y-2">
-                        <div className="flex justify-between">
-                          <span className="text-sm">Check in:</span>
-                          <span className="text-sm font-medium">
-                            {new Date(recentBookings[0].check_in_date).toLocaleDateString()}
-                          </span>
+                ) : bookings.length === 0 ? (
+                  <div className="text-center py-8">
+                    <BookOpen className="h-10 w-10 text-muted-foreground mx-auto mb-2" />
+                    <h3 className="font-medium text-lg mb-1">No bookings yet</h3>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      You haven't made any bookings yet. Start by exploring available properties.
+                    </p>
+                    <Button onClick={() => navigate('/properties')}>
+                      Find Accommodation
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {bookings.map((booking) => (
+                      <div 
+                        key={booking.id} 
+                        className="flex flex-col sm:flex-row border rounded-lg overflow-hidden hover:bg-gray-50 transition cursor-pointer"
+                        onClick={() => navigate(`/student/bookings/${booking.id}`)}
+                      >
+                        <div className="w-full sm:w-1/4 h-32 sm:h-auto bg-gray-200 relative">
+                          {booking.property?.images && booking.property.images.length > 0 ? (
+                            <img 
+                              src={booking.property.images[0].image_url} 
+                              alt={booking.property?.name || 'Property'} 
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                              <Building className="h-8 w-8 text-gray-400" />
+                            </div>
+                          )}
                         </div>
-                        
-                        {recentBookings[0].time_frame === 'daily' && (
-                          <div className="flex justify-between">
-                            <span className="text-sm">Check out:</span>
-                            <span className="text-sm font-medium">
-                              {new Date(recentBookings[0].check_out_date).toLocaleDateString()}
+                        <div className="p-4 flex-1">
+                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-2">
+                            <h3 className="font-medium text-lg">{booking.property?.name || 'Property'}</h3>
+                            <span className={`text-xs rounded-full px-2 py-1 inline-flex items-center w-fit ${
+                              getBookingStatusClass(booking.status)
+                            }`}>
+                              {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
                             </span>
                           </div>
-                        )}
-                        
-                        <div className="flex justify-between">
-                          <span className="text-sm">Status:</span>
-                          <span className={`text-xs px-2 py-0.5 rounded-full ${
-                            recentBookings[0].status === 'confirmed' ? 'bg-green-100 text-green-800' :
-                            recentBookings[0].status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                            'bg-blue-100 text-blue-800'
-                          }`}>
-                            {recentBookings[0].status.charAt(0).toUpperCase() + recentBookings[0].status.slice(1)}
-                          </span>
+                          <div className="text-sm text-muted-foreground flex items-center mb-1">
+                            <MapPin className="h-3 w-3 mr-1" />
+                            {booking.property?.address || 'Address not available'}
+                          </div>
+                          <div className="text-sm flex flex-wrap gap-2 mb-2">
+                            <span className="inline-flex items-center text-muted-foreground">
+                              <Calendar className="h-3 w-3 mr-1" />
+                              {new Date(booking.check_in_date).toLocaleDateString()}
+                              {booking.check_out_date && ` - ${new Date(booking.check_out_date).toLocaleDateString()}`}
+                            </span>
+                            <span className="inline-flex items-center text-muted-foreground">
+                              <Banknote className="h-3 w-3 mr-1" />
+                              ₹{booking.total_amount} 
+                              ({booking.time_frame === 'monthly' ? 'Monthly' : 'Daily'})
+                            </span>
+                          </div>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="mt-2"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate(`/student/bookings/${booking.id}`);
+                            }}
+                          >
+                            View Details
+                          </Button>
                         </div>
                       </div>
-                    </div>
-                  ) : (
-                    <div className="text-center py-4">
-                      <Building className="mx-auto h-8 w-8 text-muted-foreground mb-2" />
-                      <p className="text-muted-foreground">No upcoming stays</p>
-                      <p className="text-xs text-muted-foreground mt-1">Book your first accommodation</p>
-                    </div>
-                  )}
-                </CardContent>
-                <CardFooter className="pt-0">
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="w-full"
-                    onClick={() => setActiveTab('bookings')}
-                  >
-                    View All Bookings
-                  </Button>
-                </CardFooter>
-              </Card>
-            </motion.div>
-            
-            <motion.div
-              variants={item}
-              initial="hidden"
-              animate="show"
-              transition={{ delay: 0.3 }}
-            >
-              <Card className="h-full">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-lg flex items-center">
-                    <PieChart className="mr-2 h-5 w-5 text-primary" />
-                    Activity
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="flex items-center">
-                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center mr-3">
-                        <Building className="h-5 w-5 text-primary" />
-                      </div>
-                      <div>
-                        <p className="font-medium">Total Bookings</p>
-                        <p className="text-2xl font-bold">{isLoading ? '-' : recentBookings.length}</p>
-                      </div>
-                    </div>
+                    ))}
                     
-                    <div className="flex items-center">
-                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center mr-3">
-                        <Heart className="h-5 w-5 text-primary" />
+                    {bookings.length > 0 && (
+                      <Button 
+                        variant="outline" 
+                        className="w-full"
+                        onClick={() => navigate('/student/bookings')}
+                      >
+                        View All Bookings
+                      </Button>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Favorites Tab */}
+          <TabsContent value="favorites" className="space-y-4">
+            <Card className="shadow-sm">
+              <CardHeader>
+                <CardTitle>Your Favorite Properties</CardTitle>
+                <CardDescription>Quick access to properties you've saved</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {isLoading ? (
+                  <div className="text-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+                    <p className="mt-2 text-sm text-muted-foreground">Loading your favorites...</p>
+                  </div>
+                ) : favoriteProperties.length === 0 ? (
+                  <div className="text-center py-8">
+                    <Heart className="h-10 w-10 text-muted-foreground mx-auto mb-2" />
+                    <h3 className="font-medium text-lg mb-1">No favorites yet</h3>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      You haven't saved any properties to your favorites yet.
+                    </p>
+                    <Button onClick={() => navigate('/properties')}>
+                      Browse Properties
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {favoriteProperties.map((property) => (
+                      <Card key={property.id} className="overflow-hidden hover:shadow-md transition">
+                        <div className="h-40 bg-gray-200 relative">
+                          {property.images && property.images.length > 0 ? (
+                            <img 
+                              src={property.images[0].image_url} 
+                              alt={property.name} 
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                              <Building className="h-8 w-8 text-gray-400" />
+                            </div>
+                          )}
+                          <div className="absolute top-2 right-2">
+                            <Heart className="h-5 w-5 text-red-500 fill-red-500" />
+                          </div>
+                        </div>
+                        <CardContent className="p-3">
+                          <h3 className="font-medium mb-1 line-clamp-1">{property.name}</h3>
+                          <div className="text-xs text-muted-foreground flex items-center mb-1">
+                            <MapPin className="h-3 w-3 mr-1" />
+                            {property.location?.name || property.address}
+                          </div>
+                          <div className="flex justify-between items-center mt-2">
+                            <span className="font-medium">
+                              ₹{property.monthly_price}/month
+                            </span>
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => navigate(`/properties/${property.id}`)}
+                            >
+                              View
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+              <CardFooter className="border-t pt-4 flex justify-center">
+                <Button 
+                  variant="outline" 
+                  onClick={() => navigate('/student/favorites')}
+                >
+                  View All Favorites
+                </Button>
+              </CardFooter>
+            </Card>
+          </TabsContent>
+
+          {/* Recommended Tab */}
+          <TabsContent value="recommended" className="space-y-4">
+            <Card className="shadow-sm">
+              <CardHeader>
+                <CardTitle>Recommended For You</CardTitle>
+                <CardDescription>Personalized accommodation suggestions based on your preferences</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {isLoading ? (
+                  <div className="text-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+                    <p className="mt-2 text-sm text-muted-foreground">Finding recommendations for you...</p>
+                  </div>
+                ) : recommendedProperties.length === 0 ? (
+                  <div className="text-center py-8">
+                    <Building className="h-10 w-10 text-muted-foreground mx-auto mb-2" />
+                    <h3 className="font-medium text-lg mb-1">No recommendations yet</h3>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      We'll provide personalized recommendations as you use the platform more.
+                    </p>
+                    <Button onClick={() => navigate('/properties')}>
+                      Browse Properties
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {recommendedProperties.map((property) => (
+                      <Card key={property.id} className="overflow-hidden hover:shadow-md transition">
+                        <div className="h-40 bg-gray-200 relative">
+                          {property.images && property.images.length > 0 ? (
+                            <img 
+                              src={property.images[0].image_url} 
+                              alt={property.name} 
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                              <Building className="h-8 w-8 text-gray-400" />
+                            </div>
+                          )}
+                          <div className="absolute top-2 right-2 bg-primary/90 text-white text-xs px-2 py-1 rounded">
+                            Recommended
+                          </div>
+                        </div>
+                        <CardContent className="p-3">
+                          <h3 className="font-medium mb-1 line-clamp-1">{property.name}</h3>
+                          <div className="text-xs text-muted-foreground flex items-center mb-1">
+                            <MapPin className="h-3 w-3 mr-1" />
+                            {property.location?.name || property.address}
+                          </div>
+                          <div className="flex justify-between items-center mt-2">
+                            <span className="font-medium">
+                              ₹{property.monthly_price}/month
+                            </span>
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => navigate(`/properties/${property.id}`)}
+                            >
+                              View
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+              <CardFooter className="border-t pt-4 flex justify-center">
+                <Button 
+                  variant="outline" 
+                  onClick={() => navigate('/properties')}
+                >
+                  Explore More Properties
+                </Button>
+              </CardFooter>
+            </Card>
+          </TabsContent>
+
+          {/* Recent Searches Tab */}
+          <TabsContent value="searches" className="space-y-4">
+            <Card className="shadow-sm">
+              <CardHeader>
+                <CardTitle>Recent Searches</CardTitle>
+                <CardDescription>Your recent property searches</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {isLoading ? (
+                  <div className="text-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+                    <p className="mt-2 text-sm text-muted-foreground">Loading your search history...</p>
+                  </div>
+                ) : recentSearches.length === 0 ? (
+                  <div className="text-center py-8">
+                    <Search className="h-10 w-10 text-muted-foreground mx-auto mb-2" />
+                    <h3 className="font-medium text-lg mb-1">No recent searches</h3>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      You haven't made any property searches yet.
+                    </p>
+                    <Button onClick={() => navigate('/properties')}>
+                      Search Properties
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {recentSearches.map((search) => (
+                      <div key={search.id} className="flex justify-between items-center p-3 border rounded-lg hover:bg-gray-50 transition cursor-pointer">
+                        <div className="flex items-center">
+                          <Search className="h-4 w-4 mr-2 text-muted-foreground" />
+                          <span>{search.query}</span>
+                        </div>
+                        <div className="flex items-center">
+                          <span className="text-xs text-muted-foreground mr-3">
+                            {new Date(search.date).toLocaleDateString()}
+                          </span>
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => navigate(`/properties?q=${encodeURIComponent(search.query)}`)}
+                          >
+                            <ArrowRight className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </div>
-                      <div>
-                        <p className="font-medium">Saved Properties</p>
-                        <p className="text-2xl font-bold">{isLoading ? '-' : favoriteProperties.length}</p>
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-center">
-                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center mr-3">
-                        <Clock className="h-5 w-5 text-primary" />
-                      </div>
-                      <div>
-                        <p className="font-medium">Days as Member</p>
-                        <p className="text-2xl font-bold">
-                          {profile?.created_at 
-                            ? Math.floor((new Date().getTime() - new Date(profile.created_at).getTime()) / (1000 * 60 * 60 * 24))
-                            : '-'}
-                        </p>
-                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* User Activity Card */}
+            <Card className="shadow-sm">
+              <CardHeader>
+                <CardTitle>Your Activity</CardTitle>
+                <CardDescription>Recent interactions on the platform</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="flex items-start space-x-4">
+                    <Avatar>
+                      <AvatarImage src={profile?.avatar_url || ''} />
+                      <AvatarFallback>{profile?.full_name?.substring(0, 2) || 'U'}</AvatarFallback>
+                    </Avatar>
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium">You viewed a property</p>
+                      <p className="text-xs text-muted-foreground">3-BHK Apartment in Delhi</p>
+                      <p className="text-xs text-muted-foreground">2 hours ago</p>
                     </div>
                   </div>
-                </CardContent>
-              </Card>
-            </motion.div>
-          </div>
-          
-          <AIRecommendations 
-            userPreferences={{
-              gender: (extendedProfile?.gender as any) || 'common',
-              location: 'Jaipur',
-              propertyType: 'hostel'
-            }}
-          />
-        </TabsContent>
-        
-        <TabsContent value="bookings">
-          <motion.div
-            variants={container}
-            initial="hidden"
-            animate="show"
-            className="space-y-6"
-          >
-            <h2 className="text-2xl font-bold">Your Bookings</h2>
-            
-            {isLoading ? (
-              <div className="space-y-4">
-                {[...Array(3)].map((_, i) => (
-                  <Card key={i} className="animate-pulse">
-                    <CardContent className="p-6">
-                      <div className="h-6 bg-muted rounded w-1/3 mb-4"></div>
-                      <div className="h-4 bg-muted rounded w-full mb-2"></div>
-                      <div className="h-4 bg-muted rounded w-2/3"></div>
-                    </CardContent>
-                  </Card>
-                ))}
+                  
+                  <div className="flex items-start space-x-4">
+                    <Avatar>
+                      <AvatarImage src={profile?.avatar_url || ''} />
+                      <AvatarFallback>{profile?.full_name?.substring(0, 2) || 'U'}</AvatarFallback>
+                    </Avatar>
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium">You contacted a merchant</p>
+                      <p className="text-xs text-muted-foreground">Regarding Girl's Hostel in Mumbai</p>
+                      <p className="text-xs text-muted-foreground">1 day ago</p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-start space-x-4">
+                    <Avatar>
+                      <AvatarImage src={profile?.avatar_url || ''} />
+                      <AvatarFallback>{profile?.full_name?.substring(0, 2) || 'U'}</AvatarFallback>
+                    </Avatar>
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium">You saved a property</p>
+                      <p className="text-xs text-muted-foreground">Luxury PG near Bangalore University</p>
+                      <p className="text-xs text-muted-foreground">3 days ago</p>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+
+        {/* Need Help Card */}
+        <Card className="shadow-sm bg-gray-50">
+          <CardContent className="p-6">
+            <div className="flex flex-col sm:flex-row items-center justify-between">
+              <div className="flex items-center mb-4 sm:mb-0">
+                <div className="p-3 rounded-full bg-primary/10 mr-4">
+                  <MessageSquare className="h-6 w-6 text-primary" />
+                </div>
+                <div>
+                  <h3 className="font-medium text-lg">Need help finding accommodation?</h3>
+                  <p className="text-sm text-muted-foreground">Our team is ready to assist you with your search</p>
+                </div>
               </div>
-            ) : recentBookings.length > 0 ? (
-              <div className="space-y-4">
-                {recentBookings.map((booking) => (
-                  <motion.div variants={item} key={booking.id}>
-                    <Card>
-                      <CardContent className="p-6">
-                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                          <div>
-                            <div className="flex items-center gap-2 mb-1">
-                              <h3 className="font-semibold text-lg">{booking.property?.name || 'Property'}</h3>
-                              <span className={`text-xs px-2 py-0.5 rounded-full ${
-                                booking.status === 'confirmed' ? 'bg-green-100 text-green-800' :
-                                booking.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                                booking.status === 'cancelled' ? 'bg-red-100 text-red-800' :
-                                'bg-blue-100 text-blue-800'
-                              }`}>
-                                {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
-                              </span>
-                            </div>
-                            <p className="text-muted-foreground text-sm flex items-center">
-                              <MapPin className="mr-1 h-3 w-3" />
-                              {booking.property?.address || 'Address unavailable'}
-                            </p>
-                            <div className="mt-2 text-sm">
-                              <span className="font-medium">Check in: </span>
-                              <span>{new Date(booking.check_in_date).toLocaleDateString()}</span>
-                              {booking.time_frame === 'daily' && (
-                                <>
-                                  <span className="mx-2">•</span>
-                                  <span className="font-medium">Check out: </span>
-                                  <span>{new Date(booking.check_out_date).toLocaleDateString()}</span>
-                                </>
-                              )}
-                            </div>
-                          </div>
-                          
-                          <div className="flex items-center gap-2">
-                            <Button variant="outline" size="sm" asChild>
-                              <a href={`/bookings/${booking.id}/confirmation`}>View Details</a>
-                            </Button>
-                            
-                            {booking.status === 'pending' && (
-                              <Button size="sm" variant="destructive">Cancel</Button>
-                            )}
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </motion.div>
-                ))}
-              </div>
-            ) : (
-              <Card>
-                <CardContent className="p-6 text-center">
-                  <Book className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
-                  <h3 className="text-lg font-medium mb-1">No bookings yet</h3>
-                  <p className="text-muted-foreground mb-4">Start exploring accommodations to make your first booking</p>
-                  <Button asChild>
-                    <a href="/properties">Browse Properties</a>
-                  </Button>
-                </CardContent>
-              </Card>
-            )}
-          </motion.div>
-        </TabsContent>
-        
-        <TabsContent value="favorites">
-          <motion.div
-            variants={container}
-            initial="hidden"
-            animate="show"
-            className="space-y-6"
-          >
-            <h2 className="text-2xl font-bold">Saved Properties</h2>
-            
-            {isLoading ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {[...Array(4)].map((_, i) => (
-                  <Card key={i} className="animate-pulse">
-                    <div className="h-40 bg-muted rounded-t-lg"></div>
-                    <CardContent className="p-4">
-                      <div className="h-6 bg-muted rounded w-3/4 mb-2"></div>
-                      <div className="h-4 bg-muted rounded w-full mb-2"></div>
-                      <div className="h-4 bg-muted rounded w-1/2"></div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            ) : favoriteProperties.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {favoriteProperties.map((property) => (
-                  <motion.div variants={item} key={property.id}>
-                    <Card className="overflow-hidden">
-                      <div className="h-40 bg-muted relative">
-                        <img 
-                          src={property.image_url || "https://images.unsplash.com/photo-1555854877-bab0e564b8d5?ixlib=rb-4.0.3"} 
-                          alt={property.name} 
-                          className="w-full h-full object-cover"
-                        />
-                        <Button size="icon" variant="secondary" className="absolute top-2 right-2 rounded-full">
-                          <Heart className="h-4 w-4 fill-current" />
-                        </Button>
-                      </div>
-                      <CardContent className="p-4">
-                        <h3 className="font-semibold text-lg">{property.name}</h3>
-                        <p className="text-muted-foreground text-sm flex items-center mt-1">
-                          <MapPin className="mr-1 h-3 w-3" />
-                          {property.address}
-                        </p>
-                        <p className="font-medium text-lg mt-2">₹{property.monthly_price?.toLocaleString() || property.daily_price?.toLocaleString()}</p>
-                        <div className="flex gap-2 mt-3">
-                          <Button size="sm">View Details</Button>
-                          <Button size="sm" variant="outline">Book Now</Button>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </motion.div>
-                ))}
-              </div>
-            ) : (
-              <Card>
-                <CardContent className="p-6 text-center">
-                  <Bookmark className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
-                  <h3 className="text-lg font-medium mb-1">No saved properties</h3>
-                  <p className="text-muted-foreground mb-4">Save properties you like to compare them later</p>
-                  <Button asChild>
-                    <a href="/properties">Browse Properties</a>
-                  </Button>
-                </CardContent>
-              </Card>
-            )}
-          </motion.div>
-        </TabsContent>
-      </Tabs>
-    </div>
+              <Button>Contact Support</Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </DashboardLayout>
   );
 };
 

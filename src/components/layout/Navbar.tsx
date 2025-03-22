@@ -1,12 +1,15 @@
 
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Menu, X, Search, User, Building, ShieldCheck } from 'lucide-react';
+import { Menu, X, Search } from 'lucide-react';
+import AuthButtons from '@/components/layout/AuthButtons';
+import { useAuth } from '@/contexts/AuthContext';
 
 const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const location = useLocation();
+  const { userRole } = useAuth();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -31,6 +34,19 @@ const Navbar = () => {
     return location.pathname === path;
   };
 
+  const getDashboardLink = () => {
+    switch (userRole) {
+      case 'student':
+        return '/student/dashboard';
+      case 'merchant':
+        return '/merchant/dashboard';
+      case 'admin':
+        return '/admin/dashboard';
+      default:
+        return '/';
+    }
+  };
+
   return (
     <nav 
       className={`fixed w-full z-50 transition-all duration-300 ${
@@ -41,67 +57,53 @@ const Navbar = () => {
     >
       <div className="container px-4 mx-auto flex justify-between items-center">
         <Link to="/" className="flex items-center space-x-2">
-          <span className="font-bold text-xl text-bnoy-600">Bnoy</span>
+          <span className="font-bold text-xl text-primary">Bnoy</span>
           <span className="font-light text-xl">Rooms</span>
         </Link>
 
         {/* Desktop Navigation */}
         <div className="hidden md:flex items-center space-x-8">
-          <div className="flex space-x-1">
+          <div className="flex space-x-4">
             <Link 
               to="/" 
-              className={`nav-link ${isActive('/') ? 'active' : ''}`}
+              className={`nav-link ${isActive('/') ? 'text-primary font-medium' : 'text-foreground hover:text-primary'}`}
             >
               Home
             </Link>
             <Link 
               to="/properties" 
-              className={`nav-link ${isActive('/properties') ? 'active' : ''}`}
+              className={`nav-link ${isActive('/properties') ? 'text-primary font-medium' : 'text-foreground hover:text-primary'}`}
             >
               Properties
             </Link>
+            {userRole && (
+              <Link 
+                to={getDashboardLink()} 
+                className={`nav-link ${location.pathname.includes('/dashboard') ? 'text-primary font-medium' : 'text-foreground hover:text-primary'}`}
+              >
+                Dashboard
+              </Link>
+            )}
             <Link 
               to="/about" 
-              className={`nav-link ${isActive('/about') ? 'active' : ''}`}
+              className={`nav-link ${isActive('/about') ? 'text-primary font-medium' : 'text-foreground hover:text-primary'}`}
             >
               About
             </Link>
             <Link 
               to="/contact" 
-              className={`nav-link ${isActive('/contact') ? 'active' : ''}`}
+              className={`nav-link ${isActive('/contact') ? 'text-primary font-medium' : 'text-foreground hover:text-primary'}`}
             >
               Contact
             </Link>
           </div>
 
-          <div className="flex items-center space-x-3">
-            <Link to="/dashboard/user" className="flex items-center space-x-1 p-2 rounded-full hover:bg-bnoy-50 transition-colors">
-              <User size={18} className="text-bnoy-600" />
-            </Link>
-            <Link to="/dashboard/merchant" className="flex items-center space-x-1 p-2 rounded-full hover:bg-bnoy-50 transition-colors">
-              <Building size={18} className="text-bnoy-600" />
-            </Link>
-            <Link to="/dashboard/admin" className="flex items-center space-x-1 p-2 rounded-full hover:bg-bnoy-50 transition-colors">
-              <ShieldCheck size={18} className="text-bnoy-600" />
-            </Link>
-            <Link 
-              to="/login" 
-              className="btn-outline"
-            >
-              Login
-            </Link>
-            <Link 
-              to="/register" 
-              className="btn-primary"
-            >
-              Register
-            </Link>
-          </div>
+          <AuthButtons />
         </div>
 
         {/* Mobile Menu Button */}
         <button 
-          className="md:hidden p-2 rounded-md text-bnoy-600"
+          className="md:hidden p-2 rounded-md text-primary"
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
         >
           {isMobileMenuOpen ? (
@@ -118,67 +120,38 @@ const Navbar = () => {
           <div className="flex flex-col p-4 space-y-3">
             <Link 
               to="/" 
-              className={`px-4 py-2 rounded-md ${isActive('/') ? 'bg-bnoy-50 text-bnoy-600' : 'text-foreground'}`}
+              className={`px-4 py-2 rounded-md ${isActive('/') ? 'bg-primary/10 text-primary' : 'text-foreground'}`}
             >
               Home
             </Link>
             <Link 
               to="/properties" 
-              className={`px-4 py-2 rounded-md ${isActive('/properties') ? 'bg-bnoy-50 text-bnoy-600' : 'text-foreground'}`}
+              className={`px-4 py-2 rounded-md ${isActive('/properties') ? 'bg-primary/10 text-primary' : 'text-foreground'}`}
             >
               Properties
             </Link>
+            {userRole && (
+              <Link 
+                to={getDashboardLink()} 
+                className={`px-4 py-2 rounded-md ${location.pathname.includes('/dashboard') ? 'bg-primary/10 text-primary' : 'text-foreground'}`}
+              >
+                Dashboard
+              </Link>
+            )}
             <Link 
               to="/about" 
-              className={`px-4 py-2 rounded-md ${isActive('/about') ? 'bg-bnoy-50 text-bnoy-600' : 'text-foreground'}`}
+              className={`px-4 py-2 rounded-md ${isActive('/about') ? 'bg-primary/10 text-primary' : 'text-foreground'}`}
             >
               About
             </Link>
             <Link 
               to="/contact" 
-              className={`px-4 py-2 rounded-md ${isActive('/contact') ? 'bg-bnoy-50 text-bnoy-600' : 'text-foreground'}`}
+              className={`px-4 py-2 rounded-md ${isActive('/contact') ? 'bg-primary/10 text-primary' : 'text-foreground'}`}
             >
               Contact
             </Link>
             <div className="pt-2 border-t border-border/50">
-              <p className="text-xs text-muted-foreground mb-2">Dashboards</p>
-              <div className="grid grid-cols-3 gap-2">
-                <Link 
-                  to="/dashboard/user" 
-                  className="flex flex-col items-center p-3 rounded-lg bg-bnoy-50/50 hover:bg-bnoy-50 transition-colors"
-                >
-                  <User size={18} className="text-bnoy-600 mb-1" />
-                  <span className="text-xs">User</span>
-                </Link>
-                <Link 
-                  to="/dashboard/merchant" 
-                  className="flex flex-col items-center p-3 rounded-lg bg-bnoy-50/50 hover:bg-bnoy-50 transition-colors"
-                >
-                  <Building size={18} className="text-bnoy-600 mb-1" />
-                  <span className="text-xs">Merchant</span>
-                </Link>
-                <Link 
-                  to="/dashboard/admin" 
-                  className="flex flex-col items-center p-3 rounded-lg bg-bnoy-50/50 hover:bg-bnoy-50 transition-colors"
-                >
-                  <ShieldCheck size={18} className="text-bnoy-600 mb-1" />
-                  <span className="text-xs">Admin</span>
-                </Link>
-              </div>
-            </div>
-            <div className="flex space-x-2 pt-2">
-              <Link 
-                to="/login" 
-                className="btn-outline flex-1"
-              >
-                Login
-              </Link>
-              <Link 
-                to="/register" 
-                className="btn-primary flex-1"
-              >
-                Register
-              </Link>
+              <AuthButtons />
             </div>
           </div>
         </div>
