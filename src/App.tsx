@@ -29,15 +29,17 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/properties" element={<Properties />} />
+            
+            {/* Auth routes */}
             <Route path="/auth/login" element={<Login />} />
             <Route path="/auth/register" element={<Register />} />
             <Route path="/auth/callback" element={<AuthCallback />} />
+            
+            {/* Redirects for convenience */}
             <Route path="/login" element={<Navigate to="/auth/login" replace />} />
             <Route path="/register" element={<Navigate to="/auth/register" replace />} />
             
-            {/* Fix login route to make it accessible directly */}
-            <Route path="login" element={<Login />} />
-            
+            {/* Dashboard routes */}
             <Route 
               path="/dashboard/student" 
               element={
@@ -62,6 +64,8 @@ const App = () => (
                 </ProtectedRoute>
               } 
             />
+            
+            {/* Booking routes */}
             <Route
               path="/bookings/:bookingId/confirmation"
               element={
@@ -70,7 +74,8 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+            
+            {/* Catch-all route */}
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

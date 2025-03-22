@@ -1,3 +1,4 @@
+
 // Auth types
 export type UserRole = 'student' | 'merchant' | 'admin';
 export type GenderOption = 'boys' | 'girls' | 'common';
@@ -13,6 +14,7 @@ export interface UserProfile {
   avatar_url: string | null;
   created_at: string;
   updated_at: string;
+  gender?: GenderOption; // Add gender field
 }
 
 export interface Merchant {

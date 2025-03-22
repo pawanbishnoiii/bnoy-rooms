@@ -7,7 +7,6 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
@@ -18,7 +17,7 @@ import { cn } from "@/lib/utils";
 import { CalendarIcon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { TimeFrame, BookingStatus } from "@/types";
+import { TimeFrame } from "@/types";
 
 interface BookingFormProps {
   propertyId: string;
@@ -94,7 +93,7 @@ const BookingForm = ({ propertyId, price, timeFrame, onSuccess }: BookingFormPro
         time_frame: timeFrame,
         price_per_unit: price,
         total_amount: totalAmount,
-        status: 'pending' as BookingStatus,
+        status: 'pending', // Use string literal instead of BookingStatus type
         number_of_guests: values.numberOfGuests,
         special_requests: values.specialRequests || '',
       };

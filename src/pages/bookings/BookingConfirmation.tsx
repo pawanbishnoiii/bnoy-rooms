@@ -19,11 +19,17 @@ import { motion } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
 import { Booking, Property } from '@/types';
 
+// Define additional properties that exist in the DB but might not be in the type
+interface ExtendedBooking extends Booking {
+  number_of_guests?: number;
+  special_requests?: string;
+}
+
 const BookingConfirmation = () => {
   const { bookingId } = useParams<{ bookingId: string }>();
   const { toast } = useToast();
   const { user } = useAuth();
-  const [booking, setBooking] = useState<Partial<Booking> | null>(null);
+  const [booking, setBooking] = useState<Partial<ExtendedBooking> | null>(null);
   const [property, setProperty] = useState<Partial<Property> | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -51,7 +57,7 @@ const BookingConfirmation = () => {
         if (!propertyData) throw new Error('Property not found');
 
         // Transform booking data to match Booking type
-        const transformedBooking: Partial<Booking> = {
+        const transformedBooking: Partial<ExtendedBooking> = {
           id: bookingData.id,
           property_id: bookingData.property_id,
           user_id: bookingData.user_id,
@@ -130,7 +136,7 @@ const BookingConfirmation = () => {
               <CheckCircle className="h-10 w-10 text-primary" />
             </div>
             <CardTitle className="text-2xl">Booking Confirmation</CardTitle>
-            <CardDescription>Your booking has been {booking.status}</CardDescription>
+            <CardDescription>Your booking has been {booking?.status}</CardDescription>
           </CardHeader>
 
           <CardContent className="space-y-6">
@@ -141,9 +147,9 @@ const BookingConfirmation = () => {
                   <CardContent className="p-4">
                     <div className="space-y-4">
                       <div>
-                        <h4 className="text-lg font-bold">{property.name}</h4>
+                        <h4 className="text-lg font-bold">{property?.name}</h4>
                         <p className="text-muted-foreground flex items-center mt-1">
-                          <MapPin className="h-4 w-4 mr-1" /> {property.address}
+                          <MapPin className="h-4 w-4 mr-1" /> {property?.address}
                         </p>
                       </div>
                       <div className="flex items-center">
@@ -152,10 +158,10 @@ const BookingConfirmation = () => {
                         </div>
                         <div>
                           <p className="text-sm font-medium">Check-in</p>
-                          <p className="text-sm">{format(new Date(booking.check_in_date || ''), 'PPP')}</p>
+                          <p className="text-sm">{booking?.check_in_date ? format(new Date(booking.check_in_date), 'PPP') : ''}</p>
                         </div>
                       </div>
-                      {booking.check_out_date && booking.time_frame === 'daily' && (
+                      {booking?.check_out_date && booking.time_frame === 'daily' && (
                         <div className="flex items-center">
                           <div className="bg-primary/10 p-1.5 rounded-full mr-3">
                             <Calendar className="h-4 w-4 text-primary" />
@@ -172,10 +178,10 @@ const BookingConfirmation = () => {
                         </div>
                         <div>
                           <p className="text-sm font-medium">Guests</p>
-                          <p className="text-sm">{booking.number_of_guests || 1} guest(s)</p>
+                          <p className="text-sm">{booking?.number_of_guests || 1} guest(s)</p>
                         </div>
                       </div>
-                      {booking.special_requests && (
+                      {booking?.special_requests && (
                         <div>
                           <p className="text-sm font-medium">Special Requests</p>
                           <p className="text-sm mt-1">{booking.special_requests}</p>
@@ -193,27 +199,27 @@ const BookingConfirmation = () => {
                     <div className="space-y-4">
                       <div className="flex items-center justify-between">
                         <span>Booking ID</span>
-                        <span className="font-mono text-sm">{booking.id?.substring(0, 8)}</span>
+                        <span className="font-mono text-sm">{booking?.id?.substring(0, 8)}</span>
                       </div>
                       <div className="flex items-center justify-between">
                         <span>Status</span>
                         <span className={`px-2 py-1 rounded-full text-xs ${
-                          booking.status === 'confirmed' ? 'bg-green-100 text-green-800' :
-                          booking.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                          booking.status === 'cancelled' ? 'bg-red-100 text-red-800' :
+                          booking?.status === 'confirmed' ? 'bg-green-100 text-green-800' :
+                          booking?.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                          booking?.status === 'cancelled' ? 'bg-red-100 text-red-800' :
                           'bg-blue-100 text-blue-800'
                         }`}>
-                          {booking.status?.charAt(0).toUpperCase() + booking.status?.slice(1)}
+                          {booking?.status?.charAt(0).toUpperCase() + booking?.status?.slice(1)}
                         </span>
                       </div>
                       <div className="flex items-center justify-between">
-                        <span>Price {booking.time_frame === 'daily' ? 'per day' : 'per month'}</span>
-                        <span>₹{booking.price_per_unit?.toLocaleString()}</span>
+                        <span>Price {booking?.time_frame === 'daily' ? 'per day' : 'per month'}</span>
+                        <span>₹{booking?.price_per_unit?.toLocaleString()}</span>
                       </div>
                       <Separator />
                       <div className="flex items-center justify-between font-bold">
                         <span>Total Amount</span>
-                        <span>₹{booking.total_amount?.toLocaleString()}</span>
+                        <span>₹{booking?.total_amount?.toLocaleString()}</span>
                       </div>
 
                       <div className="pt-4">

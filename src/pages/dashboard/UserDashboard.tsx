@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,13 +9,47 @@ import { motion } from 'framer-motion';
 import { Bookmark, Calendar, Clock, Settings, User, Building, MapPin, PieChart, Book, Heart } from 'lucide-react';
 import AIRecommendations from '@/components/properties/AIRecommendations';
 
+interface ExtendedUserProfile {
+  id: string;
+  full_name: string | null;
+  role: string;
+  phone: string | null;
+  email: string | null;
+  avatar_url: string | null;
+  created_at: string;
+  updated_at: string;
+  gender?: 'boys' | 'girls' | 'common';
+}
+
+interface BookingWithProperty {
+  id: string;
+  property_id: string;
+  user_id: string;
+  check_in_date: string;
+  check_out_date: string | null;
+  time_frame: 'daily' | 'monthly';
+  price_per_unit: number;
+  total_amount: number;
+  status: string;
+  created_at: string;
+  updated_at: string;
+  property: {
+    id: string;
+    name: string;
+    address: string;
+    type: string;
+    [key: string]: any;
+  } | null;
+}
+
 const UserDashboard = () => {
   const { user, profile } = useAuth();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('overview');
-  const [recentBookings, setRecentBookings] = useState<any[]>([]);
+  const [recentBookings, setRecentBookings] = useState<BookingWithProperty[]>([]);
   const [favoriteProperties, setFavoriteProperties] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const extendedProfile = profile as ExtendedUserProfile | null;
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -24,7 +57,6 @@ const UserDashboard = () => {
       
       setIsLoading(true);
       try {
-        // Fetch recent bookings
         const { data: bookingsData, error: bookingsError } = await supabase
           .from('bookings')
           .select(`
@@ -37,7 +69,6 @@ const UserDashboard = () => {
           
         if (bookingsError) throw bookingsError;
         
-        // Fetch favorite properties (simulated for now)
         const { data: favoritesData, error: favoritesError } = await supabase
           .from('properties')
           .select('*')
@@ -45,18 +76,22 @@ const UserDashboard = () => {
           
         if (favoritesError) throw favoritesError;
         
-        // Process and set bookings data
-        const processedBookings = bookingsData.map(booking => {
-          // Safely handle property data to avoid TypeScript errors
-          const property = booking.property || {};
+        const processedBookings: BookingWithProperty[] = bookingsData.map(booking => {
+          const property = booking.property || {
+            id: '',
+            name: 'Unknown Property',
+            address: 'Address not available',
+            type: 'Unknown type'
+          };
           
           return {
             ...booking,
             property: {
+              id: property.id || '',
               name: property.name || 'Unknown Property',
               address: property.address || 'Address not available',
               type: property.type || 'Unknown type',
-              id: property.id || '',
+              ...property
             }
           };
         });
@@ -118,7 +153,7 @@ const UserDashboard = () => {
         className="flex flex-col md:flex-row gap-6 md:items-center justify-between mb-8"
       >
         <div>
-          <h1 className="text-4xl font-bold mb-2">Welcome back, {profile.full_name?.split(' ')[0] || 'Student'}</h1>
+          <h1 className="text-4xl font-bold mb-2">Welcome back, {profile?.full_name?.split(' ')[0] || 'Student'}</h1>
           <p className="text-muted-foreground">Manage your accommodations and bookings</p>
         </div>
         
@@ -319,7 +354,7 @@ const UserDashboard = () => {
           
           <AIRecommendations 
             userPreferences={{
-              gender: profile.gender as any || 'common',
+              gender: (extendedProfile?.gender as any) || 'common',
               location: 'Jaipur',
               propertyType: 'hostel'
             }}
