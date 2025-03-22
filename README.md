@@ -56,4 +56,4 @@ This project is built with .
 
 ## How can I deploy this project?
 
-Simply open [Lovable](https://bnoy-rooms.vercel.app/)) and click on Share -> Publish.
+Simply open [Bnoy Rooms](https://bnoy-rooms.vercel.app/)) and click on Share -> Publish.
