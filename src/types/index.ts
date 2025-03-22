@@ -1,4 +1,3 @@
-
 // Auth types
 export type UserRole = 'student' | 'merchant' | 'admin';
 export type GenderOption = 'boys' | 'girls' | 'common';

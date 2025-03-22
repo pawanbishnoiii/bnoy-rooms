@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { format } from 'date-fns';
@@ -19,8 +18,19 @@ import { motion } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
 import { Booking, Property } from '@/types';
 
-// Define additional properties that exist in the DB but might not be in the type
-interface ExtendedBooking extends Booking {
+interface SupabaseBooking {
+  id: string;
+  property_id: string;
+  user_id: string;
+  check_in_date: string;
+  check_out_date: string | null;
+  time_frame: "daily" | "monthly";
+  price_per_unit: number;
+  total_amount: number;
+  status: "pending" | "confirmed" | "cancelled" | "completed";
+  created_at: string;
+  updated_at: string;
+  property: Property;
   number_of_guests?: number;
   special_requests?: string;
 }
@@ -29,7 +39,7 @@ const BookingConfirmation = () => {
   const { bookingId } = useParams<{ bookingId: string }>();
   const { toast } = useToast();
   const { user } = useAuth();
-  const [booking, setBooking] = useState<Partial<ExtendedBooking> | null>(null);
+  const [booking, setBooking] = useState<Partial<SupabaseBooking> | null>(null);
   const [property, setProperty] = useState<Partial<Property> | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -38,7 +48,6 @@ const BookingConfirmation = () => {
       if (!bookingId || !user) return;
 
       try {
-        // Fetch booking details
         const { data: bookingData, error: bookingError } = await supabase
           .from('bookings')
           .select(`
@@ -52,28 +61,10 @@ const BookingConfirmation = () => {
         if (bookingError) throw bookingError;
         if (!bookingData) throw new Error('Booking not found');
 
-        // Safely handle property data
         const propertyData = bookingData.property as Property;
         if (!propertyData) throw new Error('Property not found');
 
-        // Transform booking data to match Booking type
-        const transformedBooking: Partial<ExtendedBooking> = {
-          id: bookingData.id,
-          property_id: bookingData.property_id,
-          user_id: bookingData.user_id,
-          check_in_date: bookingData.check_in_date,
-          check_out_date: bookingData.check_out_date,
-          time_frame: bookingData.time_frame,
-          price_per_unit: bookingData.price_per_unit,
-          total_amount: bookingData.total_amount,
-          status: bookingData.status,
-          created_at: bookingData.created_at,
-          updated_at: bookingData.updated_at,
-          number_of_guests: bookingData.number_of_guests || 1,
-          special_requests: bookingData.special_requests || '',
-        };
-
-        setBooking(transformedBooking);
+        setBooking(bookingData as SupabaseBooking);
         setProperty(propertyData);
       } catch (error: any) {
         console.error('Error fetching booking details:', error);

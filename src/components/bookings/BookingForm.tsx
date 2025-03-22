@@ -93,7 +93,7 @@ const BookingForm = ({ propertyId, price, timeFrame, onSuccess }: BookingFormPro
         time_frame: timeFrame,
         price_per_unit: price,
         total_amount: totalAmount,
-        status: 'pending', // Use string literal instead of BookingStatus type
+        status: 'pending' as 'pending' | 'confirmed' | 'cancelled' | 'completed', // Use exact string literal type
         number_of_guests: values.numberOfGuests,
         special_requests: values.specialRequests || '',
       };
