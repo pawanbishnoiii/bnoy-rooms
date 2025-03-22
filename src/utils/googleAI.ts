@@ -1,5 +1,6 @@
 
 import { supabase } from '@/integrations/supabase/client';
+import { Property } from '@/types';
 
 // Google AI API Key
 const GOOGLE_AI_API_KEY = 'AIzaSyA88AkZfdrXeNDnRX0R45m1rw_GkstEb_U';
@@ -14,6 +15,13 @@ interface RecommendationOptions {
   };
   nearbyAmenities?: boolean;
   limit?: number;
+}
+
+// Define a type that extends Property with the matchScore property
+interface PropertyWithScore extends Property {
+  matchScore?: number;
+  ai_strengths?: string[];
+  ai_recommended?: boolean;
 }
 
 export const getAIRecommendations = async (options: RecommendationOptions = {}) => {
@@ -96,7 +104,8 @@ export const getAIRecommendations = async (options: RecommendationOptions = {}) 
     console.log('Properties for recommendation:', propertyDescriptions);
 
     // Simulate AI recommendation by sorting properties based on preferences
-    let recommendedProperties = [...properties];
+    // Cast properties to PropertyWithScore to add matchScore
+    let recommendedProperties: PropertyWithScore[] = [...properties] as PropertyWithScore[];
 
     // Apply advanced sorting logic based on preferences
     if (options.userPreferences) {
