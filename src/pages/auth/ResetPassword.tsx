@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
@@ -12,6 +11,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useAuth } from '@/contexts/AuthContext';
 import { motion } from 'framer-motion';
+import { supabase } from '@/integrations/supabase/client';
 
 const formSchema = z.object({
   password: z.string().min(6, { message: 'Password must be at least 6 characters' }),
@@ -31,10 +31,8 @@ const ResetPassword = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
 
-  // Get the reset token from the URL
   const resetToken = searchParams.get('token');
 
-  // Redirect to home if already logged in and no token present
   React.useEffect(() => {
     if (session && !resetToken) {
       navigate('/');
@@ -59,7 +57,6 @@ const ResetPassword = () => {
       setError(null);
       setIsLoading(true);
       
-      // Use Supabase to update password with the token
       const { data, error } = await supabase.auth.updateUser({ 
         password: values.password 
       });
@@ -70,7 +67,6 @@ const ResetPassword = () => {
 
       setIsSuccess(true);
       
-      // Redirect after successful password reset
       setTimeout(() => {
         navigate('/auth/login');
       }, 2000);

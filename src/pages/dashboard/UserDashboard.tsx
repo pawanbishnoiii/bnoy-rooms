@@ -25,7 +25,7 @@ import {
   User,
   BookOpen
 } from 'lucide-react';
-import { Property, Booking } from '@/types';
+import { Property, Booking, Location, PropertyImage } from '@/types';
 
 const UserDashboard = () => {
   const { user, profile } = useAuth();
@@ -73,7 +73,7 @@ const UserDashboard = () => {
         .select(`
           *,
           images:property_images(*),
-          location:locations(name)
+          location:locations(*)
         `)
         .is('is_verified', true)
         .limit(6);
@@ -87,10 +87,106 @@ const UserDashboard = () => {
         { id: 3, query: 'Girls hostel near Bangalore', date: new Date(Date.now() - 172800000).toISOString() },
       ];
 
+      // Map data to match our interfaces
+      const mappedBookings: Booking[] = bookingsData?.map(booking => {
+        const propertyData = booking.property;
+        let propertyImages: PropertyImage[] = [];
+        
+        if (propertyData?.images) {
+          propertyImages = propertyData.images.map((img: any) => ({
+            id: img.id,
+            property_id: img.property_id,
+            image_url: img.image_url,
+            is_primary: img.is_primary || false,
+            created_at: img.created_at
+          }));
+        }
+        
+        const property: Property = propertyData ? {
+          id: propertyData.id,
+          merchant_id: '',  // Default value since not fetched
+          name: propertyData.name,
+          type: propertyData.type || '',
+          gender: 'common', // Default value since not fetched
+          description: null,
+          location_id: null,
+          address: propertyData.address,
+          latitude: null,
+          longitude: null,
+          daily_price: propertyData.daily_price,
+          monthly_price: propertyData.monthly_price,
+          is_verified: true, // Default value since not fetched
+          created_at: '',    // Default value since not fetched
+          updated_at: '',    // Default value since not fetched
+          images: propertyImages,
+          location: null,
+          facilities: []
+        } : null;
+        
+        return {
+          id: booking.id,
+          property_id: booking.property_id,
+          user_id: booking.user_id,
+          check_in_date: booking.check_in_date,
+          check_out_date: booking.check_out_date,
+          time_frame: booking.time_frame,
+          price_per_unit: booking.price_per_unit,
+          total_amount: booking.total_amount,
+          status: booking.status || 'pending',
+          created_at: booking.created_at,
+          updated_at: booking.updated_at,
+          property
+        };
+      }) || [];
+
+      // Map properties
+      const mappedProperties: Property[] = allProperties?.map(prop => {
+        let locationData: Location | null = null;
+        
+        if (prop.location) {
+          locationData = {
+            id: prop.location.id || '',
+            name: prop.location.name || '',
+            latitude: prop.location.latitude || null,
+            longitude: prop.location.longitude || null,
+            created_at: prop.location.created_at || '',
+          };
+        }
+        
+        const propertyImages: PropertyImage[] = prop.images?.map((img: any) => ({
+          id: img.id,
+          property_id: img.property_id,
+          image_url: img.image_url,
+          is_primary: img.is_primary || false,
+          created_at: img.created_at
+        })) || [];
+        
+        return {
+          id: prop.id,
+          merchant_id: prop.merchant_id,
+          name: prop.name,
+          type: prop.type,
+          gender: prop.gender,
+          description: prop.description,
+          location_id: prop.location_id,
+          address: prop.address,
+          latitude: prop.latitude,
+          longitude: prop.longitude,
+          daily_price: prop.daily_price,
+          monthly_price: prop.monthly_price,
+          is_verified: prop.is_verified || false,
+          created_at: prop.created_at,
+          updated_at: prop.updated_at,
+          location: locationData,
+          images: propertyImages,
+          facilities: []
+        };
+      }) || [];
+      
       // Set data to state
-      setBookings(bookingsData || []);
-      setFavoriteProperties(allProperties?.slice(0, 3) || []);
-      setRecommendedProperties(allProperties?.slice(3) || []);
+      setBookings(mappedBookings);
+      setFavoriteProperties(mappedProperties.slice(0, 3));
+      setRecommendedProperties(mappedProperties.slice(3));
       setRecentSearches(mockSearches);
 
     } catch (error) {
