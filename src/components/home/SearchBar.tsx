@@ -1,9 +1,14 @@
 
 import React, { useState, useEffect } from 'react';
-import { Search, MapPin, HomeIcon, Users, Filter, Sparkles } from 'lucide-react';
+import { Search, MapPin, HomeIcon, Users, Filter, Sparkles, Star, CreditCard, Wifi, Fan, Utensils, CarFront, Lock, Dumbbell } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '@/integrations/supabase/client';
 import { Badge } from '@/components/ui/badge';
+import { Slider } from '@/components/ui/slider';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Separator } from '@/components/ui/separator';
+import { Input } from '@/components/ui/input';
+import { useToast } from '@/hooks/use-toast';
 
 const locationOptions = [
   'Suratgarh', 'Bikaner', 'Anupgarh', 'RaiSinghnagar', 
@@ -26,31 +31,56 @@ const SearchBar = () => {
   const [showLocationDropdown, setShowLocationDropdown] = useState(false);
   const [filteredLocations, setFilteredLocations] = useState(locationOptions);
   const [isAIEnabled, setIsAIEnabled] = useState(false);
-  const [budget, setBudget] = useState('');
+  const [budgetRange, setBudgetRange] = useState<[number, number]>([1000, 15000]);
   const [showFilters, setShowFilters] = useState(false);
   const [amenities, setAmenities] = useState<string[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [aiSuggestions, setAiSuggestions] = useState<string[]>([]);
+  const [genderOption, setGenderOption] = useState<'boys' | 'girls' | 'common'>('common');
+  const [minRating, setMinRating] = useState<number>(0);
+  const [nearbyOptions, setNearbyOptions] = useState<string[]>([]);
+  const { toast } = useToast();
   
-  // Available amenities for filter
+  // Available amenities for filter with icons
   const availableAmenities = [
-    'WiFi', 'AC', 'Parking', 'Laundry', 'Meals', 'Gym', 'Security'
+    { id: 'WiFi', label: 'WiFi', icon: Wifi },
+    { id: 'AC', label: 'AC', icon: Fan },
+    { id: 'Parking', label: 'Parking', icon: CarFront },
+    { id: 'Laundry', label: 'Laundry', icon: Utensils },
+    { id: 'Meals', label: 'Meals', icon: Utensils },
+    { id: 'Gym', label: 'Gym', icon: Dumbbell },
+    { id: 'Security', label: 'Security', icon: Lock }
+  ];
+  
+  // Nearby options for filtering
+  const availableNearbyOptions = [
+    'College', 'University', 'Hospital', 'Metro Station', 
+    'Bus Stop', 'Market', 'Restaurant', 'Mall'
   ];
   
   useEffect(() => {
     if (isAIEnabled && location) {
-      // Simulate AI suggestions
+      // Simulate AI suggestions based on real-time input
       const suggestions = [
-        `Affordable ${propertyType || 'housing'} in ${location}`,
-        `Best rated ${propertyType || 'accommodations'} near ${location}`,
-        `${propertyType || 'Rooms'} with WiFi in ${location}`,
-        `Safe ${propertyType || 'housing'} options for students in ${location}`
+        `Affordable ${propertyType || 'housing'} for ${genderOption} in ${location}`,
+        `${propertyType || 'Accommodations'} with WiFi and AC in ${location}`,
+        `Best rated ${propertyType || 'PGs'} near ${location} (${minRating}+ rating)`,
+        `${propertyType || 'Rooms'} with monthly rent ₹${budgetRange[0]}-₹${budgetRange[1]} in ${location}`
       ];
+      
+      if (amenities.length > 0) {
+        suggestions.push(`${propertyType || 'Places'} with ${amenities.slice(0, 2).join(', ')} in ${location}`);
+      }
+      
+      if (nearbyOptions.length > 0) {
+        suggestions.push(`${propertyType || 'Options'} near ${nearbyOptions[0]} in ${location}`);
+      }
+      
       setAiSuggestions(suggestions);
     } else {
       setAiSuggestions([]);
     }
-  }, [location, propertyType, isAIEnabled]);
+  }, [location, propertyType, isAIEnabled, genderOption, minRating, budgetRange, amenities, nearbyOptions]);
   
   const handleLocationChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -81,36 +111,76 @@ const SearchBar = () => {
     );
   };
   
+  const toggleNearbyOption = (option: string) => {
+    setNearbyOptions(prev => 
+      prev.includes(option) 
+        ? prev.filter(o => o !== option)
+        : [...prev, option]
+    );
+  };
+  
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     setIsSearching(true);
     
+    // Prepare search data
+    const searchData = { 
+      location, 
+      propertyType,
+      minBudget: budgetRange[0],
+      maxBudget: budgetRange[1],
+      gender: genderOption,
+      amenities,
+      minRating,
+      nearbyOptions,
+      aiEnhanced: isAIEnabled
+    };
+    
+    console.log('Searching for:', searchData);
+    
     // Simulate search API call
     setTimeout(() => {
-      console.log('Searching for:', { 
-        location, 
-        propertyType,
-        budget: budget ? parseInt(budget) : undefined,
-        amenities,
-        aiEnhanced: isAIEnabled
-      });
       setIsSearching(false);
       
-      // Here you would typically redirect to search results page
-      window.location.href = `/properties?location=${encodeURIComponent(location)}&type=${encodeURIComponent(propertyType)}&ai=${isAIEnabled}`;
+      // Show success toast
+      toast({
+        title: 'Search completed',
+        description: `Found properties matching your criteria in ${location || 'all locations'}`,
+      });
+      
+      // Redirect to search results page
+      const queryParams = new URLSearchParams();
+      if (location) queryParams.set('location', location);
+      if (propertyType) queryParams.set('type', propertyType);
+      if (genderOption !== 'common') queryParams.set('gender', genderOption);
+      queryParams.set('minPrice', budgetRange[0].toString());
+      queryParams.set('maxPrice', budgetRange[1].toString());
+      if (minRating > 0) queryParams.set('rating', minRating.toString());
+      if (amenities.length > 0) queryParams.set('amenities', amenities.join(','));
+      if (nearbyOptions.length > 0) queryParams.set('nearby', nearbyOptions.join(','));
+      queryParams.set('ai', isAIEnabled.toString());
+      
+      window.location.href = `/properties?${queryParams.toString()}`;
     }, 1000);
   };
   
   const selectAiSuggestion = (suggestion: string) => {
-    // Here we would parse the suggestion and update the form
+    // Parse the AI suggestion and update search filters
     if (suggestion.includes('Affordable')) {
-      setBudget('5000');
+      setBudgetRange([1000, 7000]);
+    } else if (suggestion.includes('WiFi and AC')) {
+      setAmenities(prev => [...new Set([...prev, 'WiFi', 'AC'])]);
     } else if (suggestion.includes('Best rated')) {
-      // Would set some sort of rating filter
-    } else if (suggestion.includes('WiFi')) {
-      setAmenities(prev => [...prev, 'WiFi']);
-    } else if (suggestion.includes('Safe')) {
-      // Would set some sort of safety filter
+      setMinRating(4);
+    } else if (suggestion.includes('monthly rent')) {
+      // The range is already part of the filters
+    }
+    
+    // Handle gender option
+    if (suggestion.includes('for boys')) {
+      setGenderOption('boys');
+    } else if (suggestion.includes('for girls')) {
+      setGenderOption('girls');
     }
     
     // Submit the search with the AI suggestion
@@ -214,77 +284,200 @@ const SearchBar = () => {
                 exit={{ height: 0, opacity: 0 }}
                 className="overflow-hidden mt-3"
               >
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-3 border-t border-gray-200">
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Budget (per month)</label>
-                    <input
-                      type="number"
-                      placeholder="Maximum budget"
-                      value={budget}
-                      onChange={(e) => setBudget(e.target.value)}
-                      className="w-full border border-gray-200 rounded-md py-2 px-3"
-                    />
-                  </div>
-                  
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium mb-2">Amenities</label>
-                    <div className="flex flex-wrap gap-2">
-                      {availableAmenities.map(amenity => (
-                        <Badge 
-                          key={amenity}
-                          variant={amenities.includes(amenity) ? "default" : "outline"}
-                          className="cursor-pointer hover:shadow-sm transition-shadow"
-                          onClick={() => toggleAmenity(amenity)}
-                        >
-                          {amenity}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-                  
-                  <div className="md:col-span-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-2">
-                        <Sparkles size={16} className="text-amber-500" />
-                        <span className="text-sm font-medium">Enable AI-powered search</span>
+                <div className="pt-3 border-t border-gray-200">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {/* Budget range slider */}
+                    <div className="space-y-3">
+                      <label className="block text-sm font-medium">Budget Range (₹ per month)</label>
+                      <Slider 
+                        defaultValue={budgetRange} 
+                        min={1000} 
+                        max={50000} 
+                        step={500}
+                        onValueChange={(value) => setBudgetRange(value as [number, number])}
+                        className="py-4" 
+                      />
+                      <div className="flex justify-between text-sm">
+                        <span>₹{budgetRange[0].toLocaleString()}</span>
+                        <span>₹{budgetRange[1].toLocaleString()}</span>
                       </div>
-                      <label className="relative inline-flex items-center cursor-pointer">
-                        <input 
-                          type="checkbox" 
-                          checked={isAIEnabled}
-                          onChange={() => setIsAIEnabled(!isAIEnabled)}
-                          className="sr-only peer" 
+                      <div className="flex gap-2 mt-3">
+                        <Input 
+                          type="number" 
+                          value={budgetRange[0]} 
+                          onChange={e => setBudgetRange([parseInt(e.target.value), budgetRange[1]])}
+                          className="text-xs p-2 h-8"
+                          min={1000}
+                          max={budgetRange[1] - 500}
+                          step={500}
                         />
-                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/30 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
-                      </label>
+                        <span className="flex items-center">-</span>
+                        <Input 
+                          type="number" 
+                          value={budgetRange[1]}
+                          onChange={e => setBudgetRange([budgetRange[0], parseInt(e.target.value)])}
+                          className="text-xs p-2 h-8"
+                          min={budgetRange[0] + 500}
+                          max={50000}
+                          step={500}
+                        />
+                      </div>
                     </div>
                     
-                    <AnimatePresence>
-                      {isAIEnabled && aiSuggestions.length > 0 && (
-                        <motion.div
-                          initial={{ opacity: 0, y: -5 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: -5 }}
-                          className="mt-3"
+                    {/* Gender options */}
+                    <div className="space-y-3">
+                      <label className="block text-sm font-medium">Accommodation For</label>
+                      <div className="flex flex-wrap gap-2">
+                        <Badge 
+                          variant={genderOption === 'boys' ? "default" : "outline"}
+                          className="cursor-pointer hover:shadow-sm transition-shadow px-4 py-2"
+                          onClick={() => setGenderOption('boys')}
                         >
-                          <p className="text-xs text-muted-foreground mb-2">AI Suggestions</p>
-                          <div className="flex flex-wrap gap-2">
-                            {aiSuggestions.map((suggestion, index) => (
-                              <Badge 
-                                key={index}
-                                variant="secondary"
-                                className="cursor-pointer hover:bg-secondary/80 transition-colors"
-                                onClick={() => selectAiSuggestion(suggestion)}
+                          <Users size={14} className="mr-1" />
+                          Boys
+                        </Badge>
+                        <Badge 
+                          variant={genderOption === 'girls' ? "default" : "outline"}
+                          className="cursor-pointer hover:shadow-sm transition-shadow px-4 py-2"
+                          onClick={() => setGenderOption('girls')}
+                        >
+                          <Users size={14} className="mr-1" />
+                          Girls
+                        </Badge>
+                        <Badge 
+                          variant={genderOption === 'common' ? "default" : "outline"}
+                          className="cursor-pointer hover:shadow-sm transition-shadow px-4 py-2"
+                          onClick={() => setGenderOption('common')}
+                        >
+                          <Users size={14} className="mr-1" />
+                          Common / Any
+                        </Badge>
+                      </div>
+                      
+                      {/* Minimum Rating */}
+                      <div className="space-y-2 pt-2">
+                        <label className="block text-sm font-medium">Minimum Rating</label>
+                        <div className="flex gap-3">
+                          {[0, 1, 2, 3, 4, 5].map((rating) => (
+                            <Badge 
+                              key={rating}
+                              variant={minRating === rating ? "default" : "outline"}
+                              className="cursor-pointer hover:shadow-sm transition-shadow"
+                              onClick={() => setMinRating(rating)}
+                            >
+                              {rating === 0 ? 'Any' : (
+                                <div className="flex items-center">
+                                  {rating}
+                                  <Star size={12} className="ml-0.5 text-amber-500" />
+                                </div>
+                              )}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Amenities */}
+                    <div>
+                      <label className="block text-sm font-medium mb-3">Amenities</label>
+                      <div className="grid grid-cols-2 gap-2">
+                        {availableAmenities.map(amenity => {
+                          const AmenityIcon = amenity.icon;
+                          return (
+                            <div key={amenity.id} className="flex items-center space-x-2">
+                              <Checkbox 
+                                id={`amenity-${amenity.id}`} 
+                                checked={amenities.includes(amenity.id)}
+                                onCheckedChange={() => toggleAmenity(amenity.id)}
+                              />
+                              <label 
+                                htmlFor={`amenity-${amenity.id}`}
+                                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex items-center"
                               >
-                                <Sparkles size={12} className="mr-1 text-amber-500" />
-                                {suggestion}
-                              </Badge>
-                            ))}
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
+                                <AmenityIcon size={14} className="mr-1" />
+                                {amenity.label}
+                              </label>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
                   </div>
+                  
+                  {/* Advanced Filters Section */}
+                  <div className="mt-6">
+                    <Separator className="my-4" />
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      {/* Nearby Options */}
+                      <div className="md:col-span-2">
+                        <label className="block text-sm font-medium mb-3">Nearby Places</label>
+                        <div className="flex flex-wrap gap-2">
+                          {availableNearbyOptions.map(option => (
+                            <Badge 
+                              key={option}
+                              variant={nearbyOptions.includes(option) ? "default" : "outline"}
+                              className="cursor-pointer hover:shadow-sm transition-shadow"
+                              onClick={() => toggleNearbyOption(option)}
+                            >
+                              {option}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                      
+                      {/* AI Toggle */}
+                      <div>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-2">
+                            <Sparkles size={16} className="text-amber-500" />
+                            <span className="text-sm font-medium">AI-powered search</span>
+                          </div>
+                          <label className="relative inline-flex items-center cursor-pointer">
+                            <input 
+                              type="checkbox" 
+                              checked={isAIEnabled}
+                              onChange={() => setIsAIEnabled(!isAIEnabled)}
+                              className="sr-only peer" 
+                            />
+                            <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/30 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                          </label>
+                        </div>
+                        
+                        <div className="mt-2 text-xs text-muted-foreground">
+                          Enhance your search with AI-powered recommendations based on your preferences
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <AnimatePresence>
+                    {isAIEnabled && aiSuggestions.length > 0 && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -5 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -5 }}
+                        className="mt-6 p-3 border rounded-md bg-slate-50"
+                      >
+                        <div className="flex items-center mb-2">
+                          <Sparkles size={14} className="mr-1 text-amber-500" />
+                          <p className="text-sm font-medium">AI-Powered Suggestions</p>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {aiSuggestions.map((suggestion, index) => (
+                            <Badge 
+                              key={index}
+                              variant="secondary"
+                              className="cursor-pointer hover:bg-secondary/80 transition-colors py-1.5"
+                              onClick={() => selectAiSuggestion(suggestion)}
+                            >
+                              <Sparkles size={12} className="mr-1 text-amber-500" />
+                              {suggestion}
+                            </Badge>
+                          ))}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
               </motion.div>
             )}

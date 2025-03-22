@@ -50,6 +50,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
+        console.log('Auth state changed:', _event, session?.user?.email);
         setSession(session);
         setUser(session?.user ?? null);
         setIsAuthenticated(!!session);
@@ -72,6 +73,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const fetchUserProfile = async (userId: string) => {
     try {
       setIsLoading(true);
+      console.log('Fetching profile for user:', userId);
+      
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
@@ -79,14 +82,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .single();
 
       if (error) {
+        console.error('Error fetching profile:', error);
         throw error;
       }
 
       if (data) {
+        console.log('Profile found:', data);
         setProfile(data as UserProfile);
         setUserRole(data.role as UserRole);
+      } else {
+        console.log('No profile found');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching user profile:', error);
       toast({
         title: 'Error',
@@ -217,16 +224,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signOut = async () => {
     try {
       setIsLoading(true);
+      console.log('Signing out user');
+      
+      // Clear any local session data first
+      setSession(null);
+      setUser(null);
+      setProfile(null);
+      setUserRole(null);
+      setIsAuthenticated(false);
+      
       const { error } = await supabase.auth.signOut();
       
       if (error) {
+        console.error('Error signing out:', error);
         throw error;
       }
 
+      // Successfully signed out
+      console.log('Successfully signed out');
+      
       toast({
         title: 'Signed out',
         description: 'You have been successfully signed out'
       });
+      
+      // Force reload the page to clear any cached data
+      window.location.href = '/';
     } catch (error: any) {
       console.error('Error signing out:', error);
       toast({

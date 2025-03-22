@@ -11,11 +11,15 @@ import {
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { LogOut, User, Building, Settings } from 'lucide-react';
+import { LogOut, User, Building, Settings, LayoutDashboard, BookMarked, Star } from 'lucide-react';
+import { useState } from 'react';
+import { useToast } from '@/hooks/use-toast';
 
 const AuthButtons = () => {
   const { user, profile, userRole, signOut } = useAuth();
   const navigate = useNavigate();
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const { toast } = useToast();
 
   if (!user) {
     return (
@@ -35,17 +39,28 @@ const AuthButtons = () => {
   }
 
   const handleSignOut = async () => {
-    await signOut();
-    navigate('/');
+    try {
+      setIsLoggingOut(true);
+      await signOut();
+      // Navigation will be handled in the signOut function
+    } catch (error) {
+      console.error('Error during logout:', error);
+      setIsLoggingOut(false);
+      toast({
+        title: 'Logout failed',
+        description: 'There was a problem signing you out. Please try again.',
+        variant: 'destructive'
+      });
+    }
   };
 
   const navigateToDashboard = () => {
     if (userRole === 'student') {
-      navigate('/dashboard/student');
+      navigate('/student/dashboard');
     } else if (userRole === 'merchant') {
-      navigate('/dashboard/merchant');
+      navigate('/merchant/dashboard');
     } else if (userRole === 'admin') {
-      navigate('/dashboard/admin');
+      navigate('/admin/dashboard');
     }
   };
 
@@ -78,22 +93,46 @@ const AuthButtons = () => {
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
+        
         <DropdownMenuItem onClick={navigateToDashboard}>
-          {userRole === 'merchant' ? (
-            <Building className="mr-2 h-4 w-4" />
-          ) : (
-            <User className="mr-2 h-4 w-4" />
-          )}
+          <LayoutDashboard className="mr-2 h-4 w-4" />
           Dashboard
         </DropdownMenuItem>
+        
+        {userRole === 'student' && (
+          <>
+            <DropdownMenuItem onClick={() => navigate('/student/bookings')}>
+              <BookMarked className="mr-2 h-4 w-4" />
+              My Bookings
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => navigate('/student/favorites')}>
+              <Star className="mr-2 h-4 w-4" />
+              Favorites
+            </DropdownMenuItem>
+          </>
+        )}
+        
+        {userRole === 'merchant' && (
+          <DropdownMenuItem onClick={() => navigate('/merchant/properties')}>
+            <Building className="mr-2 h-4 w-4" />
+            My Properties
+          </DropdownMenuItem>
+        )}
+        
         <DropdownMenuItem onClick={() => navigate('/settings')}>
           <Settings className="mr-2 h-4 w-4" />
           Settings
         </DropdownMenuItem>
+        
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={handleSignOut}>
+        
+        <DropdownMenuItem 
+          onClick={handleSignOut}
+          disabled={isLoggingOut}
+          className={isLoggingOut ? 'opacity-50 cursor-not-allowed' : ''}
+        >
           <LogOut className="mr-2 h-4 w-4" />
-          Log out
+          {isLoggingOut ? 'Logging out...' : 'Log out'}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

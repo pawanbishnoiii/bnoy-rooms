@@ -14,6 +14,8 @@ import ResetPassword from "./pages/auth/ResetPassword";
 import AuthCallback from "./pages/auth/AuthCallback";
 import MerchantDashboard from "./pages/dashboard/MerchantDashboard";
 import UserDashboard from "./pages/dashboard/UserDashboard";
+import StudentDashboard from "./pages/dashboard/StudentDashboard";
+import UserSettings from "./pages/settings/UserSettings";
 import AdminDashboard from "./pages/dashboard/AdminDashboard";
 import Properties from "./pages/Properties";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
@@ -45,12 +47,22 @@ const App = () => (
             <Route path="/forgot-password" element={<Navigate to="/auth/forgot-password" replace />} />
             <Route path="/reset-password" element={<Navigate to="/auth/reset-password" replace />} />
             
+            {/* Settings routes */}
+            <Route 
+              path="/settings" 
+              element={
+                <ProtectedRoute>
+                  <UserSettings />
+                </ProtectedRoute>
+              } 
+            />
+            
             {/* Student Dashboard routes */}
             <Route 
               path="/student/dashboard" 
               element={
                 <ProtectedRoute allowedRoles={['student']}>
-                  <UserDashboard />
+                  <StudentDashboard />
                 </ProtectedRoute>
               } 
             />
@@ -58,7 +70,7 @@ const App = () => (
               path="/student/bookings" 
               element={
                 <ProtectedRoute allowedRoles={['student']}>
-                  <Navigate to="/student/dashboard" replace />
+                  <StudentDashboard />
                 </ProtectedRoute>
               } 
             />
@@ -66,7 +78,7 @@ const App = () => (
               path="/student/favorites" 
               element={
                 <ProtectedRoute allowedRoles={['student']}>
-                  <Navigate to="/student/dashboard" replace />
+                  <StudentDashboard />
                 </ProtectedRoute>
               } 
             />
@@ -74,7 +86,7 @@ const App = () => (
               path="/student/reviews" 
               element={
                 <ProtectedRoute allowedRoles={['student']}>
-                  <Navigate to="/student/dashboard" replace />
+                  <StudentDashboard />
                 </ProtectedRoute>
               } 
             />
@@ -82,7 +94,7 @@ const App = () => (
               path="/student/settings" 
               element={
                 <ProtectedRoute allowedRoles={['student']}>
-                  <Navigate to="/student/dashboard" replace />
+                  <UserSettings />
                 </ProtectedRoute>
               } 
             />
@@ -100,7 +112,7 @@ const App = () => (
               path="/merchant/properties" 
               element={
                 <ProtectedRoute allowedRoles={['merchant']}>
-                  <Navigate to="/merchant/dashboard" replace />
+                  <MerchantDashboard />
                 </ProtectedRoute>
               } 
             />
@@ -108,7 +120,7 @@ const App = () => (
               path="/merchant/properties/new" 
               element={
                 <ProtectedRoute allowedRoles={['merchant']}>
-                  <Navigate to="/merchant/dashboard" replace />
+                  <MerchantDashboard />
                 </ProtectedRoute>
               } 
             />
@@ -116,7 +128,7 @@ const App = () => (
               path="/merchant/bookings" 
               element={
                 <ProtectedRoute allowedRoles={['merchant']}>
-                  <Navigate to="/merchant/dashboard" replace />
+                  <MerchantDashboard />
                 </ProtectedRoute>
               } 
             />
@@ -124,7 +136,7 @@ const App = () => (
               path="/merchant/reviews" 
               element={
                 <ProtectedRoute allowedRoles={['merchant']}>
-                  <Navigate to="/merchant/dashboard" replace />
+                  <MerchantDashboard />
                 </ProtectedRoute>
               } 
             />
@@ -132,7 +144,7 @@ const App = () => (
               path="/merchant/settings" 
               element={
                 <ProtectedRoute allowedRoles={['merchant']}>
-                  <Navigate to="/merchant/dashboard" replace />
+                  <UserSettings />
                 </ProtectedRoute>
               } 
             />
@@ -150,7 +162,7 @@ const App = () => (
               path="/admin/users" 
               element={
                 <ProtectedRoute allowedRoles={['admin']}>
-                  <Navigate to="/admin/dashboard" replace />
+                  <AdminDashboard />
                 </ProtectedRoute>
               } 
             />
@@ -158,7 +170,7 @@ const App = () => (
               path="/admin/properties" 
               element={
                 <ProtectedRoute allowedRoles={['admin']}>
-                  <Navigate to="/admin/dashboard" replace />
+                  <AdminDashboard />
                 </ProtectedRoute>
               } 
             />
@@ -166,7 +178,7 @@ const App = () => (
               path="/admin/merchants" 
               element={
                 <ProtectedRoute allowedRoles={['admin']}>
-                  <Navigate to="/admin/dashboard" replace />
+                  <AdminDashboard />
                 </ProtectedRoute>
               } 
             />
@@ -174,7 +186,7 @@ const App = () => (
               path="/admin/bookings" 
               element={
                 <ProtectedRoute allowedRoles={['admin']}>
-                  <Navigate to="/admin/dashboard" replace />
+                  <AdminDashboard />
                 </ProtectedRoute>
               } 
             />
@@ -182,7 +194,7 @@ const App = () => (
               path="/admin/reviews" 
               element={
                 <ProtectedRoute allowedRoles={['admin']}>
-                  <Navigate to="/admin/dashboard" replace />
+                  <AdminDashboard />
                 </ProtectedRoute>
               } 
             />
@@ -190,7 +202,7 @@ const App = () => (
               path="/admin/locations" 
               element={
                 <ProtectedRoute allowedRoles={['admin']}>
-                  <Navigate to="/admin/dashboard" replace />
+                  <AdminDashboard />
                 </ProtectedRoute>
               } 
             />
@@ -198,7 +210,7 @@ const App = () => (
               path="/admin/settings" 
               element={
                 <ProtectedRoute allowedRoles={['admin']}>
-                  <Navigate to="/admin/dashboard" replace />
+                  <UserSettings />
                 </ProtectedRoute>
               } 
             />
