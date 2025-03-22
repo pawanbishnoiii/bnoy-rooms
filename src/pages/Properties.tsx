@@ -21,12 +21,13 @@ import {
 } from '@/components/ui/accordion';
 import { Checkbox } from '@/components/ui/checkbox';
 import PropertyCard from '@/components/home/PropertyCard';
-import { MapPin, Search, SlidersHorizontal, X, Map, List } from 'lucide-react';
+import { MapPin, Search, SlidersHorizontal, X, Map, List, Star, BedDouble, Bath, Fan, PenBox, FolderArchive } from 'lucide-react';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
 import PropertyMap from '@/components/maps/PropertyMap';
 import AIRecommendations from '@/components/properties/AIRecommendations';
 import { useAuth } from '@/contexts/AuthContext';
+import { Badge } from '@/components/ui/badge';
 
 interface FiltersState {
   gender: string;
@@ -36,6 +37,7 @@ interface FiltersState {
   facilities: string[];
   searchTerm: string;
   propertyType: string;
+  rating: number | null;
 }
 
 const PropertiesPage = () => {
@@ -58,7 +60,18 @@ const PropertiesPage = () => {
     facilities: [],
     searchTerm: '',
     propertyType: '',
+    rating: null,
   });
+
+  // Common amenities for quick access
+  const commonAmenities = [
+    { id: 'wifi', name: 'WiFi', icon: <MapPin size={16} /> },
+    { id: 'bathroom', name: 'Independent Bathroom', icon: <Bath size={16} /> },
+    { id: 'fan', name: 'Fan', icon: <Fan size={16} /> },
+    { id: 'almirah', name: 'Almirah', icon: <FolderArchive size={16} /> },
+    { id: 'desk', name: 'Desk', icon: <PenBox size={16} /> },
+    { id: 'bed', name: 'Bed', icon: <BedDouble size={16} /> },
+  ];
 
   // Max price for the range slider
   const MAX_PRICE = 50000;
@@ -105,6 +118,7 @@ const PropertiesPage = () => {
             is_primary: img.is_primary || false,
             created_at: img.created_at,
           })) || [],
+          average_rating: Math.floor(Math.random() * 5) + 1, // Mock data for now, will be replaced with real ratings
         }));
         
         setProperties(formattedProperties);
@@ -185,6 +199,7 @@ const PropertiesPage = () => {
       facilities: [],
       searchTerm: '',
       propertyType: '',
+      rating: null,
     });
   };
 
@@ -219,6 +234,11 @@ const PropertiesPage = () => {
       if (!filters.facilities.every(id => propertyFacilityIds.includes(id))) {
         return false;
       }
+    }
+
+    // Rating filter
+    if (filters.rating && property.average_rating && property.average_rating < filters.rating) {
+      return false;
     }
 
     // Search term
@@ -376,6 +396,25 @@ const PropertiesPage = () => {
                       </Select>
                     </div>
 
+                    {/* Rating filter */}
+                    <div>
+                      <label className="text-sm font-medium mb-2 block">Minimum Rating</label>
+                      <Select 
+                        value={filters.rating?.toString() || ''} 
+                        onValueChange={(value) => handleFilterChange('rating', value ? parseInt(value) : null)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Any rating" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="">Any rating</SelectItem>
+                          <SelectItem value="3">3+ Stars</SelectItem>
+                          <SelectItem value="4">4+ Stars</SelectItem>
+                          <SelectItem value="5">5 Stars</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
                     {/* Time frame filter */}
                     <div>
                       <label className="text-sm font-medium mb-2 block">Time Frame</label>
@@ -413,11 +452,35 @@ const PropertiesPage = () => {
                     />
                   </div>
 
-                  {/* Facilities filter */}
+                  {/* Common Amenities quick filter */}
                   <div className="mt-6">
+                    <label className="text-sm font-medium mb-2 block">Common Amenities</label>
+                    <div className="flex flex-wrap gap-2 mb-4">
+                      {commonAmenities.map(amenity => {
+                        const facilityInDb = facilities.find(f => f.name.toLowerCase().includes(amenity.name.toLowerCase()));
+                        const facilityId = facilityInDb?.id || '';
+                        const isSelected = facilityId && filters.facilities.includes(facilityId);
+                        
+                        return facilityId ? (
+                          <Badge 
+                            key={amenity.id}
+                            variant={isSelected ? "default" : "outline"}
+                            className="cursor-pointer py-1 px-2"
+                            onClick={() => toggleFacility(facilityId)}
+                          >
+                            <span className="mr-1">{amenity.icon}</span>
+                            {amenity.name}
+                          </Badge>
+                        ) : null;
+                      })}
+                    </div>
+                  </div>
+
+                  {/* All Facilities filter */}
+                  <div className="mt-2">
                     <Accordion type="single" collapsible>
                       <AccordionItem value="facilities">
-                        <AccordionTrigger>Facilities</AccordionTrigger>
+                        <AccordionTrigger>All Facilities</AccordionTrigger>
                         <AccordionContent>
                           <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                             {facilities.map(facility => (
@@ -445,7 +508,7 @@ const PropertiesPage = () => {
             )}
 
             {/* Filter tags */}
-            {(filters.gender || filters.location || filters.propertyType || filters.facilities.length > 0) && (
+            {(filters.gender || filters.location || filters.propertyType || filters.facilities.length > 0 || filters.rating) && (
               <div className="flex flex-wrap gap-2 mb-6">
                 {filters.gender && (
                   <div className="bg-secondary py-1 px-3 rounded-full text-xs flex items-center">
@@ -481,6 +544,18 @@ const PropertiesPage = () => {
                   </div>
                 )}
                 
+                {filters.rating && (
+                  <div className="bg-secondary py-1 px-3 rounded-full text-xs flex items-center">
+                    <Star size={12} className="mr-1 text-amber-500" fill="#F59E0B" />
+                    {filters.rating}+ Rating
+                    <X
+                      size={14}
+                      className="ml-1 cursor-pointer"
+                      onClick={() => handleFilterChange('rating', null)}
+                    />
+                  </div>
+                )}
+                
                 {filters.facilities.map(facilityId => {
                   const facility = facilities.find(f => f.id === facilityId);
                   if (!facility) return null;
@@ -496,7 +571,7 @@ const PropertiesPage = () => {
                   );
                 })}
                 
-                {(filters.gender || filters.location || filters.propertyType || filters.facilities.length > 0) && (
+                {(filters.gender || filters.location || filters.propertyType || filters.facilities.length > 0 || filters.rating) && (
                   <button
                     onClick={resetFilters}
                     className="text-xs text-bnoy-600 hover:underline"
@@ -544,7 +619,7 @@ const PropertiesPage = () => {
                     type={property.type}
                     location={property.location?.name || property.address || ''}
                     price={filters.timeFrame === 'daily' ? (property.daily_price || Math.round(property.monthly_price / 30)) : property.monthly_price}
-                    rating={4.5} // Mock data, would come from reviews
+                    rating={property.average_rating || 4.5}
                     reviewCount={12} // Mock data, would come from reviews
                     image={property.images?.find(img => img.is_primary)?.image_url || 
                            property.images?.[0]?.image_url || 

@@ -13,7 +13,7 @@ export interface UserProfile {
   avatar_url: string | null;
   created_at: string;
   updated_at: string;
-  gender?: GenderOption; // Add gender field
+  gender?: GenderOption;
 }
 
 export interface Merchant {

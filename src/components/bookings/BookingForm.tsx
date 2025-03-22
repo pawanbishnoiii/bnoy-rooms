@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useRouter } from '@/hooks/use-router';
 import { format } from 'date-fns';
@@ -88,12 +87,12 @@ const BookingForm = ({ propertyId, price, timeFrame, onSuccess }: BookingFormPro
       const bookingData = {
         property_id: propertyId,
         user_id: user.id,
-        check_in_date: values.checkInDate.toISOString(),
-        check_out_date: (values.checkOutDate || values.checkInDate).toISOString(),
+        check_in_date: new Date(values.checkInDate).toISOString().split('T')[0],
+        check_out_date: timeFrame === 'monthly' ? null : new Date(values.checkOutDate).toISOString().split('T')[0],
         time_frame: timeFrame,
         price_per_unit: price,
         total_amount: totalAmount,
-        status: 'pending' as 'pending' | 'confirmed' | 'cancelled' | 'completed', // Use exact string literal type
+        status: 'pending' as 'pending' | 'confirmed' | 'cancelled' | 'completed', // Use string literal type that matches the database
         number_of_guests: values.numberOfGuests,
         special_requests: values.specialRequests || '',
       };

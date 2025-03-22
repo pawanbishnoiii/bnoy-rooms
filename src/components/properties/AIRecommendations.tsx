@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { Sparkles, RefreshCw } from 'lucide-react';
+import { Sparkles, RefreshCw, Star, MapPin, Building } from 'lucide-react';
 import { Property } from '@/types';
 import { getAIRecommendations } from '@/utils/googleAI';
 import PropertyCard from '@/components/home/PropertyCard';
@@ -24,6 +24,7 @@ const AIRecommendations: React.FC<AIRecommendationsProps> = ({ userPreferences }
   const { user } = useAuth();
   const [recommendations, setRecommendations] = useState<Property[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [aiInsights, setAiInsights] = useState<string[]>([]);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -70,6 +71,20 @@ const AIRecommendations: React.FC<AIRecommendationsProps> = ({ userPreferences }
       }));
 
       setRecommendations(transformedData);
+
+      // Generate AI insights
+      if (transformedData.length > 0) {
+        const insights = [
+          `Found ${transformedData.length} properties matching your preferences`,
+          userPreferences?.gender ? `Optimized for ${userPreferences.gender} accommodation` : null,
+          userPreferences?.budget ? `Within your budget of ₹${userPreferences.budget}` : null,
+          userPreferences?.location ? `Located in or near ${userPreferences.location}` : null,
+          transformedData.some(p => p.average_rating && p.average_rating >= 4) ? 'Includes highly-rated properties' : null,
+          userPreferences?.amenities?.length ? `With requested amenities: ${userPreferences.amenities.slice(0, 3).join(', ')}${userPreferences.amenities.length > 3 ? ' and more' : ''}` : null
+        ].filter(Boolean) as string[];
+        
+        setAiInsights(insights);
+      }
     } catch (error: any) {
       console.error('Error fetching AI recommendations:', error);
       toast({
@@ -116,24 +131,44 @@ const AIRecommendations: React.FC<AIRecommendationsProps> = ({ userPreferences }
             ))}
           </div>
         ) : recommendations.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {recommendations.map(property => (
-              <PropertyCard
-                key={property.id}
-                id={property.id}
-                name={property.name}
-                type={property.type}
-                location={property.location?.name || property.address || ''}
-                price={property.monthly_price}
-                rating={4.5} // Mock data
-                reviewCount={12} // Mock data
-                image={property.images?.[0]?.image_url || "https://images.unsplash.com/photo-1555854877-bab0e564b8d5?ixlib=rb-4.0.3"}
-                facilities={property.facilities?.map(f => f.name) || []}
-                distance="1.2 km" // Mock data
-                isVerified={property.is_verified}
-              />
-            ))}
-          </div>
+          <>
+            {/* AI Insights */}
+            {aiInsights.length > 0 && (
+              <div className="mb-4 p-3 bg-muted/50 rounded-lg">
+                <h4 className="flex items-center text-sm font-medium mb-2">
+                  <Sparkles className="h-4 w-4 text-amber-500 mr-1" />
+                  AI Insights
+                </h4>
+                <ul className="text-sm space-y-1">
+                  {aiInsights.map((insight, index) => (
+                    <li key={index} className="flex items-start">
+                      <span className="text-primary mr-2">•</span>
+                      {insight}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {recommendations.map(property => (
+                <PropertyCard
+                  key={property.id}
+                  id={property.id}
+                  name={property.name}
+                  type={property.type}
+                  location={property.location?.name || property.address || ''}
+                  price={property.monthly_price}
+                  rating={property.average_rating || 4.5}
+                  reviewCount={12} // Mock data
+                  image={property.images?.[0]?.image_url || "https://images.unsplash.com/photo-1555854877-bab0e564b8d5?ixlib=rb-4.0.3"}
+                  facilities={property.facilities?.map(f => f.name) || []}
+                  distance="1.2 km" // Mock data
+                  isVerified={property.is_verified}
+                />
+              ))}
+            </div>
+          </>
         ) : (
           <div className="text-center py-8">
             <p className="text-muted-foreground mb-2">No recommendations available</p>
@@ -159,11 +194,13 @@ const AIRecommendations: React.FC<AIRecommendationsProps> = ({ userPreferences }
             )}
             {userPreferences.location && (
               <Badge variant="outline" className="text-xs">
-                Location: {userPreferences.location}
+                <MapPin className="h-3 w-3 mr-1" />
+                {userPreferences.location}
               </Badge>
             )}
             {userPreferences.propertyType && (
               <Badge variant="outline" className="text-xs">
+                <Building className="h-3 w-3 mr-1" />
                 {userPreferences.propertyType}
               </Badge>
             )}

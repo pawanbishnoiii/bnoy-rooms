@@ -1,20 +1,21 @@
+
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { format } from 'date-fns';
-import { CheckCircle, ArrowLeft, Calendar, MapPin, CreditCard, User } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
+import { supabase } from '@/integrations/supabase/client';
+import { 
+  Card, 
+  CardContent, 
+  CardDescription, 
+  CardFooter, 
+  CardHeader, 
+  CardTitle 
 } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
-import { motion } from 'framer-motion';
+import Navbar from '@/components/layout/Navbar';
+import Footer from '@/components/layout/Footer';
 import { useAuth } from '@/contexts/AuthContext';
 import { Booking, Property } from '@/types';
 
@@ -27,7 +28,7 @@ interface SupabaseBooking {
   time_frame: "daily" | "monthly";
   price_per_unit: number;
   total_amount: number;
-  status: "pending" | "confirmed" | "cancelled" | "completed";
+  status: "pending" | "confirmed" | "cancelled" | "completed" | "processing" | "refunded";
   created_at: string;
   updated_at: string;
   property: Property;
@@ -55,7 +56,6 @@ const BookingConfirmation = () => {
             property:properties(*)
           `)
           .eq('id', bookingId)
-          .eq('user_id', user.id)
           .single();
 
         if (bookingError) throw bookingError;
@@ -70,7 +70,7 @@ const BookingConfirmation = () => {
         console.error('Error fetching booking details:', error);
         toast({
           title: 'Error',
-          description: error.message || 'Could not load booking details',
+          description: error.message,
           variant: 'destructive',
         });
       } finally {
@@ -81,161 +81,146 @@ const BookingConfirmation = () => {
     fetchBookingDetails();
   }, [bookingId, user, toast]);
 
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'confirmed': return 'bg-green-100 text-green-800';
+      case 'cancelled': return 'bg-red-100 text-red-800';
+      case 'completed': return 'bg-blue-100 text-blue-800';
+      case 'processing': return 'bg-yellow-100 text-yellow-800';
+      case 'refunded': return 'bg-purple-100 text-purple-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
   if (isLoading) {
     return (
-      <div className="container py-10">
-        <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      <>
+        <Navbar />
+        <div className="min-h-screen py-16 px-4 bg-gray-50">
+          <div className="max-w-2xl mx-auto">
+            <div className="animate-pulse space-y-4">
+              <div className="h-8 bg-gray-200 rounded w-1/2"></div>
+              <div className="h-64 bg-gray-200 rounded"></div>
+            </div>
+          </div>
         </div>
-      </div>
+        <Footer />
+      </>
     );
   }
 
   if (!booking || !property) {
     return (
-      <div className="container py-10">
-        <Card>
-          <CardHeader>
-            <CardTitle>Booking Not Found</CardTitle>
-            <CardDescription>The booking you're looking for doesn't exist or you don't have permission to view it.</CardDescription>
-          </CardHeader>
-          <CardFooter>
-            <Button variant="outline" onClick={() => window.history.back()}>
-              <ArrowLeft className="mr-2 h-4 w-4" /> Go Back
-            </Button>
-          </CardFooter>
-        </Card>
-      </div>
+      <>
+        <Navbar />
+        <div className="min-h-screen py-16 px-4 bg-gray-50">
+          <div className="max-w-2xl mx-auto text-center">
+            <h1 className="text-2xl font-bold mb-4">Booking Not Found</h1>
+            <p className="text-gray-500 mb-6">The booking you're looking for doesn't exist or you don't have permission to view it.</p>
+            <Button onClick={() => window.history.back()}>Go Back</Button>
+          </div>
+        </div>
+        <Footer />
+      </>
     );
   }
 
   return (
-    <div className="container py-10">
-      <Button variant="outline" className="mb-6" onClick={() => window.history.back()}>
-        <ArrowLeft className="mr-2 h-4 w-4" /> Back
-      </Button>
-
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-      >
-        <Card className="overflow-hidden">
-          <div className="bg-primary h-2"></div>
-          <CardHeader className="text-center">
-            <div className="mx-auto mb-4 bg-primary/10 p-3 rounded-full w-16 h-16 flex items-center justify-center">
-              <CheckCircle className="h-10 w-10 text-primary" />
-            </div>
-            <CardTitle className="text-2xl">Booking Confirmation</CardTitle>
-            <CardDescription>Your booking has been {booking?.status}</CardDescription>
-          </CardHeader>
-
-          <CardContent className="space-y-6">
-            <div className="grid md:grid-cols-2 gap-6">
-              <div>
-                <h3 className="font-medium text-lg mb-3">Property Details</h3>
-                <Card>
-                  <CardContent className="p-4">
-                    <div className="space-y-4">
-                      <div>
-                        <h4 className="text-lg font-bold">{property?.name}</h4>
-                        <p className="text-muted-foreground flex items-center mt-1">
-                          <MapPin className="h-4 w-4 mr-1" /> {property?.address}
-                        </p>
-                      </div>
-                      <div className="flex items-center">
-                        <div className="bg-primary/10 p-1.5 rounded-full mr-3">
-                          <Calendar className="h-4 w-4 text-primary" />
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium">Check-in</p>
-                          <p className="text-sm">{booking?.check_in_date ? format(new Date(booking.check_in_date), 'PPP') : ''}</p>
-                        </div>
-                      </div>
-                      {booking?.check_out_date && booking.time_frame === 'daily' && (
-                        <div className="flex items-center">
-                          <div className="bg-primary/10 p-1.5 rounded-full mr-3">
-                            <Calendar className="h-4 w-4 text-primary" />
-                          </div>
-                          <div>
-                            <p className="text-sm font-medium">Check-out</p>
-                            <p className="text-sm">{format(new Date(booking.check_out_date), 'PPP')}</p>
-                          </div>
-                        </div>
-                      )}
-                      <div className="flex items-center">
-                        <div className="bg-primary/10 p-1.5 rounded-full mr-3">
-                          <User className="h-4 w-4 text-primary" />
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium">Guests</p>
-                          <p className="text-sm">{booking?.number_of_guests || 1} guest(s)</p>
-                        </div>
-                      </div>
-                      {booking?.special_requests && (
-                        <div>
-                          <p className="text-sm font-medium">Special Requests</p>
-                          <p className="text-sm mt-1">{booking.special_requests}</p>
-                        </div>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
+    <>
+      <Navbar />
+      <div className="min-h-screen py-16 px-4 bg-gray-50">
+        <div className="max-w-2xl mx-auto">
+          <Card className="shadow-lg">
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-2xl">Booking Confirmation</CardTitle>
+                  <CardDescription>Booking Reference: {booking.id?.substring(0, 8)}</CardDescription>
+                </div>
+                <div className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(booking.status || 'pending')}`}>
+                  {booking.status?.charAt(0).toUpperCase() + booking.status?.slice(1)}
+                </div>
               </div>
-
+            </CardHeader>
+            <CardContent className="space-y-6">
               <div>
-                <h3 className="font-medium text-lg mb-3">Payment Details</h3>
-                <Card>
-                  <CardContent className="p-4">
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <span>Booking ID</span>
-                        <span className="font-mono text-sm">{booking?.id?.substring(0, 8)}</span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span>Status</span>
-                        <span className={`px-2 py-1 rounded-full text-xs ${
-                          booking?.status === 'confirmed' ? 'bg-green-100 text-green-800' :
-                          booking?.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                          booking?.status === 'cancelled' ? 'bg-red-100 text-red-800' :
-                          'bg-blue-100 text-blue-800'
-                        }`}>
-                          {booking?.status?.charAt(0).toUpperCase() + booking?.status?.slice(1)}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span>Price {booking?.time_frame === 'daily' ? 'per day' : 'per month'}</span>
-                        <span>₹{booking?.price_per_unit?.toLocaleString()}</span>
-                      </div>
-                      <Separator />
-                      <div className="flex items-center justify-between font-bold">
-                        <span>Total Amount</span>
-                        <span>₹{booking?.total_amount?.toLocaleString()}</span>
-                      </div>
-
-                      <div className="pt-4">
-                        <div className="flex items-center">
-                          <CreditCard className="h-5 w-5 mr-2 text-muted-foreground" />
-                          <span className="text-sm text-muted-foreground">Payment will be collected at the property</span>
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                <h3 className="text-lg font-medium mb-2">{property.name}</h3>
+                <p className="text-sm text-gray-500">{property.address}</p>
               </div>
-            </div>
-          </CardContent>
-
-          <CardFooter className="flex flex-col sm:flex-row gap-4 justify-between bg-muted/50 p-6">
-            <div>
-              <p className="text-sm text-muted-foreground">For any queries, please contact us at</p>
-              <p className="font-medium">support@bnoynest.com</p>
-            </div>
-            <Button onClick={() => window.print()}>Print Receipt</Button>
-          </CardFooter>
-        </Card>
-      </motion.div>
-    </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm text-gray-500">Check-in Date</p>
+                  <p className="font-medium">
+                    {booking.check_in_date ? format(new Date(booking.check_in_date), 'dd MMM yyyy') : 'N/A'}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Check-out Date</p>
+                  <p className="font-medium">
+                    {booking.check_out_date 
+                      ? format(new Date(booking.check_out_date), 'dd MMM yyyy')
+                      : booking.time_frame === 'monthly' 
+                        ? format(new Date(booking.check_in_date || ''), 'dd MMM yyyy') + ' + 30 days'
+                        : 'N/A'
+                    }
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Booking Type</p>
+                  <p className="font-medium capitalize">{booking.time_frame}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Number of Guests</p>
+                  <p className="font-medium">{booking.number_of_guests || 1}</p>
+                </div>
+              </div>
+              
+              {booking.special_requests && (
+                <div>
+                  <p className="text-sm text-gray-500">Special Requests</p>
+                  <p className="text-sm">{booking.special_requests}</p>
+                </div>
+              )}
+              
+              <Separator />
+              
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Price ({booking.time_frame === 'daily' ? 'per day' : 'per month'})</span>
+                  <span>₹{booking.price_per_unit?.toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Duration</span>
+                  <span>{booking.time_frame === 'monthly' ? '1 month' : '1 day'}</span>
+                </div>
+                <Separator />
+                <div className="flex justify-between font-medium">
+                  <span>Total Amount</span>
+                  <span>₹{booking.total_amount?.toLocaleString()}</span>
+                </div>
+              </div>
+            </CardContent>
+            <CardFooter className="flex justify-between bg-gray-50 rounded-b-lg border-t">
+              <Button variant="outline" onClick={() => window.history.back()}>
+                Back
+              </Button>
+              
+              {booking.status === 'pending' && (
+                <Button variant="destructive">
+                  Cancel Booking
+                </Button>
+              )}
+              
+              <Button onClick={() => window.print()}>
+                Print / Download
+              </Button>
+            </CardFooter>
+          </Card>
+        </div>
+      </div>
+      <Footer />
+    </>
   );
 };
 
