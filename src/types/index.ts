@@ -1,8 +1,10 @@
+
 // Auth types
 export type UserRole = 'student' | 'merchant' | 'admin';
 export type GenderOption = 'boys' | 'girls' | 'common';
 export type BookingStatus = 'pending' | 'confirmed' | 'cancelled' | 'completed' | 'processing' | 'refunded';
 export type TimeFrame = 'daily' | 'monthly';
+export type PropertyCategory = 'pg' | 'hostel' | 'dormitory' | 'independent_room' | 'hotel' | 'library' | 'coaching' | 'tiffin_delivery';
 
 export interface UserProfile {
   id: string;
@@ -67,6 +69,7 @@ export interface Property {
   is_verified: boolean;
   created_at: string;
   updated_at: string;
+  category: PropertyCategory;
   location?: Location;
   facilities?: Facility[];
   images?: PropertyImage[];
@@ -77,6 +80,30 @@ export interface Property {
   amenities_summary?: string;
   distance_to_center?: number;
   popular_landmarks?: string[];
+  rooms?: Room[];
+}
+
+export interface Room {
+  id: string;
+  property_id: string;
+  room_number: string;
+  capacity: number;
+  occupied_beds: number;
+  monthly_price: number;
+  daily_price: number | null;
+  description: string | null;
+  is_available: boolean;
+  created_at: string;
+  updated_at: string;
+  images?: RoomImage[];
+}
+
+export interface RoomImage {
+  id: string;
+  room_id: string;
+  image_url: string;
+  is_primary: boolean;
+  created_at: string;
 }
 
 export interface PropertyImage {
@@ -153,6 +180,8 @@ export interface Booking {
   number_of_guests?: number;
   cancellation_reason?: string;
   refund_amount?: number;
+  room_id?: string;
+  room?: Room;
 }
 
 export interface SearchResult {
@@ -169,11 +198,13 @@ export interface SearchFilters {
   price_max?: number;
   gender?: GenderOption;
   property_type?: string[];
+  property_category?: PropertyCategory[];
   facilities?: string[];
   rating?: number;
   sort_by?: 'price_low' | 'price_high' | 'rating' | 'newest';
   distance?: number;
   near_institution?: string;
+  capacity?: number;
 }
 
 export interface Payment {

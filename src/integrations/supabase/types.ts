@@ -220,6 +220,7 @@ export type Database = {
       properties: {
         Row: {
           address: string
+          category: Database["public"]["Enums"]["property_category"] | null
           created_at: string
           daily_price: number | null
           description: string | null
@@ -237,6 +238,7 @@ export type Database = {
         }
         Insert: {
           address: string
+          category?: Database["public"]["Enums"]["property_category"] | null
           created_at?: string
           daily_price?: number | null
           description?: string | null
@@ -254,6 +256,7 @@ export type Database = {
         }
         Update: {
           address?: string
+          category?: Database["public"]["Enums"]["property_category"] | null
           created_at?: string
           daily_price?: number | null
           description?: string | null
@@ -392,16 +395,115 @@ export type Database = {
           },
         ]
       }
+      room_images: {
+        Row: {
+          created_at: string
+          id: string
+          image_url: string
+          is_primary: boolean | null
+          room_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          image_url: string
+          is_primary?: boolean | null
+          room_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          image_url?: string
+          is_primary?: boolean | null
+          room_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "room_images_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rooms: {
+        Row: {
+          capacity: number
+          created_at: string
+          daily_price: number | null
+          description: string | null
+          id: string
+          is_available: boolean | null
+          monthly_price: number
+          occupied_beds: number
+          property_id: string
+          room_number: string
+          updated_at: string
+        }
+        Insert: {
+          capacity?: number
+          created_at?: string
+          daily_price?: number | null
+          description?: string | null
+          id?: string
+          is_available?: boolean | null
+          monthly_price: number
+          occupied_beds?: number
+          property_id: string
+          room_number: string
+          updated_at?: string
+        }
+        Update: {
+          capacity?: number
+          created_at?: string
+          daily_price?: number | null
+          description?: string | null
+          id?: string
+          is_available?: boolean | null
+          monthly_price?: number
+          occupied_beds?: number
+          property_id?: string
+          room_number?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rooms_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_property_room_counts: {
+        Args: {
+          property_id: string
+        }
+        Returns: {
+          total_rooms: number
+          available_rooms: number
+        }[]
+      }
     }
     Enums: {
       booking_status: "pending" | "confirmed" | "cancelled" | "completed"
       gender_option: "boys" | "girls" | "common"
+      property_category:
+        | "pg"
+        | "hostel"
+        | "dormitory"
+        | "independent_room"
+        | "hotel"
+        | "library"
+        | "coaching"
+        | "tiffin_delivery"
       time_frame: "daily" | "monthly"
       user_role: "student" | "merchant" | "admin"
     }

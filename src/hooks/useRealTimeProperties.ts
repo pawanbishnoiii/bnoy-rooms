@@ -1,15 +1,17 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Property, Location, PropertyImage } from '@/types';
+import { Property, Location, PropertyImage, PropertyCategory, GenderOption } from '@/types';
 import { useToast } from './use-toast';
 
 interface UseRealTimePropertiesOptions {
-  gender?: 'boys' | 'girls' | 'common';
+  gender?: GenderOption;
   propertyType?: string;
+  propertyCategory?: PropertyCategory;
   location?: string;
   maxBudget?: number;
   amenities?: string[];
+  capacity?: number;
   limit?: number;
 }
 
@@ -40,7 +42,16 @@ export const useRealTimeProperties = (options: UseRealTimePropertiesOptions = {}
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [options.gender, options.propertyType, options.location, options.maxBudget, options.amenities, options.limit]);
+  }, [
+    options.gender, 
+    options.propertyType, 
+    options.propertyCategory,
+    options.location, 
+    options.maxBudget, 
+    options.amenities, 
+    options.capacity,
+    options.limit
+  ]);
 
   const fetchProperties = async () => {
     setIsLoading(true);
@@ -54,7 +65,8 @@ export const useRealTimeProperties = (options: UseRealTimePropertiesOptions = {}
           *,
           location:locations(*),
           images:property_images(*),
-          facilities:property_facilities(facility:facilities(*))
+          facilities:property_facilities(facility:facilities(*)),
+          rooms:rooms(*)
         `)
         .eq('is_verified', true);
 
@@ -66,6 +78,10 @@ export const useRealTimeProperties = (options: UseRealTimePropertiesOptions = {}
       if (options.propertyType) {
         query = query.eq('type', options.propertyType);
       }
+      
+      if (options.propertyCategory) {
+        query = query.eq('category', options.propertyCategory);
+      }
 
       if (options.location) {
         query = query.ilike('address', `%${options.location}%`);
@@ -73,6 +89,12 @@ export const useRealTimeProperties = (options: UseRealTimePropertiesOptions = {}
 
       if (options.maxBudget) {
         query = query.lte('monthly_price', options.maxBudget);
+      }
+      
+      // Filter by capacity if specified
+      if (options.capacity && options.capacity > 0) {
+        // This is more complex - we need properties that have rooms with enough capacity
+        // We'll handle this after fetching the data
       }
 
       if (options.limit) {
@@ -87,8 +109,19 @@ export const useRealTimeProperties = (options: UseRealTimePropertiesOptions = {}
         throw error;
       }
 
+      // Filter by capacity if needed
+      let filteredData = data;
+      if (options.capacity && options.capacity > 0) {
+        filteredData = data.filter(property => {
+          if (!property.rooms || property.rooms.length === 0) {
+            return false;
+          }
+          return property.rooms.some(room => room.capacity >= options.capacity!);
+        });
+      }
+
       // Transform the data to match our expected types
-      const transformedProperties = data.map((property: any) => ({
+      const transformedProperties = filteredData.map((property: any) => ({
         ...property,
         location: property.location ? {
           id: property.location.id,
@@ -104,7 +137,11 @@ export const useRealTimeProperties = (options: UseRealTimePropertiesOptions = {}
           image_url: img.image_url,
           is_primary: img.is_primary,
           created_at: img.created_at
-        }))
+        })),
+        rooms: property.rooms || [],
+        // Calculate available rooms
+        available_rooms: property.rooms ? property.rooms.filter((room: any) => room.is_available).length : 0,
+        total_rooms: property.rooms ? property.rooms.length : 0
       }));
 
       setProperties(transformedProperties);
