@@ -4,13 +4,13 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import DashboardLayout from '@/components/layout/DashboardLayout';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Bookmark, Building, Calendar, Home, MapPin, Star } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { Property, Booking } from '@/types';
+import { Property, Booking, Facility, PropertyImage, Location } from '@/types';
 import AIRecommendations from '@/components/properties/AIRecommendations';
 
 const StudentDashboard = () => {
@@ -25,10 +25,44 @@ const StudentDashboard = () => {
   useEffect(() => {
     if (user) {
       fetchUserData();
+      
+      // Set up real-time updates for bookings and favorites
+      const bookingsChannel = supabase
+        .channel('bookings-changes')
+        .on('postgres_changes', {
+          event: '*',
+          schema: 'public',
+          table: 'bookings',
+          filter: `user_id=eq.${user.id}`
+        }, () => {
+          console.log('Received real-time update for bookings');
+          fetchUserData();
+        })
+        .subscribe();
+        
+      const favoritesChannel = supabase
+        .channel('favorites-changes')
+        .on('postgres_changes', {
+          event: '*',
+          schema: 'public',
+          table: 'favorites',
+          filter: `user_id=eq.${user.id}`
+        }, () => {
+          console.log('Received real-time update for favorites');
+          fetchUserData();
+        })
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(bookingsChannel);
+        supabase.removeChannel(favoritesChannel);
+      };
     }
   }, [user]);
 
   const fetchUserData = async () => {
+    if (!user) return;
+    
     setIsLoading(true);
     try {
       // Fetch active bookings
@@ -41,7 +75,7 @@ const StudentDashboard = () => {
             images:property_images(id, property_id, image_url, is_primary, created_at)
           )
         `)
-        .eq('user_id', user!.id)
+        .eq('user_id', user.id)
         .in('status', ['pending', 'confirmed'])
         .order('created_at', { ascending: false });
 
@@ -51,22 +85,26 @@ const StudentDashboard = () => {
       const { data: favoritesData, error: favoritesError } = await supabase
         .from('favorites')
         .select(`
+          id,
+          user_id,
+          property_id,
+          created_at,
           property:properties(
             id, name, address, monthly_price, daily_price, type, gender, description, location_id,
             longitude, latitude, merchant_id, is_verified, created_at, updated_at,
-            location:locations!inner(id, name, latitude, longitude, created_at),
+            location:locations(id, name, latitude, longitude, created_at),
             images:property_images(id, property_id, image_url, is_primary, created_at),
-            facilities:property_facilities!inner(
-              facility:facilities!inner(id, name, created_at)
+            facilities:property_facilities(
+              facility:facilities(id, name, created_at)
             )
           )
         `)
-        .eq('user_id', user!.id);
+        .eq('user_id', user.id);
 
       if (favoritesError) throw favoritesError;
 
-      // Transform the data to match the expected types
-      const transformedBookings = bookingsData.map((booking: any) => ({
+      // Transform the bookings data
+      const transformedBookings: Booking[] = bookingsData.map((booking: any) => ({
         ...booking,
         property: {
           ...booking.property,
@@ -76,25 +114,47 @@ const StudentDashboard = () => {
             latitude: 0,
             longitude: 0,
             created_at: ''
-          },
-          facilities: [],
+          } as Location,
+          facilities: [] as Facility[],
           gender: 'common' as 'common' | 'boys' | 'girls',
           merchant_id: '',
           description: '',
           location_id: '',
           is_verified: false,
-          updated_at: ''
-        }
+          updated_at: '',
+          images: (booking.property.images || []).map((img: any) => ({
+            id: img.id,
+            property_id: img.property_id,
+            image_url: img.image_url,
+            is_primary: img.is_primary || false,
+            created_at: img.created_at
+          })) as PropertyImage[]
+        } as Property
       }));
 
-      const transformedFavorites = favoritesData.map((favorite: any) => ({
-        ...favorite.property,
-        facilities: favorite.property.facilities.map((f: any) => f.facility)
-      }));
+      // Transform the favorites data to properties
+      const transformedFavorites: Property[] = favoritesData
+        .filter((favorite: any) => favorite.property) // Filter out any null properties
+        .map((favorite: any) => ({
+          ...favorite.property,
+          facilities: favorite.property.facilities
+            ? favorite.property.facilities.map((f: any) => f.facility)
+            : [],
+          images: favorite.property.images || [],
+          location: favorite.property.location || {
+            id: '',
+            name: favorite.property.address.split(',')[0],
+            latitude: 0,
+            longitude: 0,
+            created_at: ''
+          }
+        }));
 
-      // Set the recent properties as favorites for now (you might implement a separate recently viewed feature later)
       setActiveBookings(transformedBookings);
       setFavoriteProperties(transformedFavorites);
+      
+      // For recently viewed, we'll just use the first 3 favorites for now
+      // In a real app, you'd implement a separate recently viewed tracking system
       setRecentlyViewedProperties(transformedFavorites.slice(0, 3));
 
     } catch (error: any) {
@@ -122,8 +182,8 @@ const StudentDashboard = () => {
         <div className="grid gap-6">
           {/* AI Recommendations for the student */}
           <AIRecommendations userPreferences={{
-            gender: profile?.gender || 'common',
-            budget: 10000, // Default budget
+            gender: profile?.preferred_gender_accommodation || profile?.gender || 'common',
+            budget: profile?.max_budget || 10000, // Default budget
             amenities: ['WiFi', 'AC', 'Meals'],
             location: profile?.preferred_location || ''
           }} />
@@ -158,7 +218,7 @@ const StudentDashboard = () => {
                     <Card key={booking.id} className="overflow-hidden">
                       <div className="flex flex-col md:flex-row">
                         <div className="md:w-1/3 h-40 md:h-auto bg-muted">
-                          {booking.property.images && booking.property.images.length > 0 ? (
+                          {booking.property?.images && booking.property.images.length > 0 ? (
                             <img 
                               src={booking.property.images[0].image_url} 
                               alt={booking.property.name}
@@ -173,10 +233,10 @@ const StudentDashboard = () => {
                         <div className="md:w-2/3 p-4">
                           <div className="flex justify-between items-start">
                             <div>
-                              <h3 className="font-semibold">{booking.property.name}</h3>
+                              <h3 className="font-semibold">{booking.property?.name}</h3>
                               <p className="text-sm text-muted-foreground flex items-center">
                                 <MapPin className="h-3.5 w-3.5 mr-1" />
-                                {booking.property.address}
+                                {booking.property?.address}
                               </p>
                             </div>
                             <Badge variant={booking.status === 'confirmed' ? 'default' : 'outline'}>
@@ -190,7 +250,7 @@ const StudentDashboard = () => {
                             </div>
                             <div className="flex justify-between text-sm">
                               <span>Check-out</span>
-                              <span className="font-medium">{new Date(booking.check_out_date).toLocaleDateString()}</span>
+                              <span className="font-medium">{booking.check_out_date ? new Date(booking.check_out_date).toLocaleDateString() : 'N/A'}</span>
                             </div>
                             <div className="flex justify-between text-sm">
                               <span>Amount</span>

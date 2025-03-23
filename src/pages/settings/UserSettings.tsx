@@ -1,202 +1,151 @@
 
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
-import DashboardLayout from '@/components/layout/DashboardLayout';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, User, KeyRound, Mail, AtSign, Phone, MapPin, Building } from 'lucide-react';
-
-const profileFormSchema = z.object({
-  full_name: z.string().min(2, { message: 'Name must be at least 2 characters' }),
-  email: z.string().email({ message: 'Please enter a valid email address' }),
-  phone: z.string().optional(),
-  gender: z.enum(['male', 'female', 'other']).optional(),
-  preferred_gender_accommodation: z.enum(['boys', 'girls', 'common']).optional(),
-  preferred_location: z.string().optional(),
-  preferred_property_type: z.string().optional(),
-  max_budget: z.string().optional().transform(val => val ? parseInt(val) : undefined),
-  notifications_enabled: z.boolean().default(true)
-});
-
-type ProfileFormValues = z.infer<typeof profileFormSchema>;
-
-const passwordFormSchema = z.object({
-  current_password: z.string().min(6, { message: 'Current password is required' }),
-  new_password: z.string().min(6, { message: 'Password must be at least 6 characters' }),
-  confirm_password: z.string().min(6, { message: 'Password must be at least 6 characters' }),
-}).refine((data) => data.new_password === data.confirm_password, {
-  message: "Passwords don't match",
-  path: ["confirm_password"],
-});
-
-type PasswordFormValues = z.infer<typeof passwordFormSchema>;
+import DashboardLayout from '@/components/layout/DashboardLayout';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
+import { Separator } from '@/components/ui/separator';
+import { Loader2, Save, Upload, User } from 'lucide-react';
 
 const UserSettings = () => {
-  const { user, profile, updateProfile } = useAuth();
-  const [isLoading, setIsLoading] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
+  const { user, profile, refreshProfile } = useAuth();
   const { toast } = useToast();
-  const navigate = useNavigate();
-
-  const locationOptions = [
-    'Suratgarh', 'Bikaner', 'Anupgarh', 'RaiSinghnagar', 
-    'Sri Ganganagar', 'Abohar', 'Gharsana', 'Hanumangarh',
-    'Sangariya', 'Sikar', 'Gopalpura Jaipur', 'Ridhi Sidhi Jaipur',
-    'Mansarovar Jaipur', 'Kota'
-  ];
-
-  const propertyTypes = ['pg', 'hostel', 'independent', 'rented', 'hotel'];
-
-  const profileForm = useForm<ProfileFormValues>({
-    resolver: zodResolver(profileFormSchema),
-    defaultValues: {
-      full_name: profile?.full_name || '',
-      email: user?.email || '',
-      phone: profile?.phone || '',
-      gender: (profile?.gender as any) || undefined,
-      preferred_gender_accommodation: (profile?.preferred_gender_accommodation as any) || 'common',
-      preferred_location: profile?.preferred_location || '',
-      preferred_property_type: profile?.preferred_property_type || '',
-      max_budget: profile?.max_budget ? profile.max_budget.toString() : '',
-      notifications_enabled: profile?.notifications_enabled !== false
-    }
-  });
-
-  const passwordForm = useForm<PasswordFormValues>({
-    resolver: zodResolver(passwordFormSchema),
-    defaultValues: {
-      current_password: '',
-      new_password: '',
-      confirm_password: ''
-    }
-  });
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [fullName, setFullName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
+  const [gender, setGender] = useState<string>('');
+  const [preferredGender, setPreferredGender] = useState<'boys' | 'girls' | 'common'>('common');
+  const [preferredLocation, setPreferredLocation] = useState('');
+  const [preferredPropertyType, setPreferredPropertyType] = useState('');
+  const [maxBudget, setMaxBudget] = useState<number | ''>('');
+  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     if (profile) {
-      profileForm.reset({
-        full_name: profile.full_name || '',
-        email: user?.email || '',
-        phone: profile.phone || '',
-        gender: (profile.gender as any) || undefined,
-        preferred_gender_accommodation: (profile.preferred_gender_accommodation as any) || 'common',
-        preferred_location: profile.preferred_location || '',
-        preferred_property_type: profile.preferred_property_type || '',
-        max_budget: profile.max_budget ? profile.max_budget.toString() : '',
-        notifications_enabled: profile.notifications_enabled !== false
-      });
+      setFullName(profile.full_name || '');
+      setPhone(profile.phone || '');
+      setEmail(profile.email || '');
+      setAvatarUrl(profile.avatar_url);
+      setGender(profile.gender || '');
+      setPreferredGender(profile.preferred_gender_accommodation as 'boys' | 'girls' | 'common' || 'common');
+      setPreferredLocation(profile.preferred_location || '');
+      setPreferredPropertyType(profile.preferred_property_type || '');
+      setMaxBudget(profile.max_budget || '');
+      setNotificationsEnabled(profile.notifications_enabled || true);
     }
-  }, [profile, user]);
+  }, [profile]);
 
-  const onProfileSubmit = async (data: ProfileFormValues) => {
-    if (!user) return;
-    
-    setIsSubmitting(true);
-    setError(null);
-    setSuccess(null);
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const file = e.target.files[0];
+      if (file.size > 2 * 1024 * 1024) {
+        toast({
+          title: 'File too large',
+          description: 'Avatar image must be less than 2MB',
+          variant: 'destructive',
+        });
+        return;
+      }
+      setAvatarFile(file);
+      // Show preview
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        setAvatarUrl(event.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const uploadAvatar = async (): Promise<string | null> => {
+    if (!avatarFile || !user) return null;
     
     try {
-      // Only update email if it has changed
-      if (data.email !== user.email) {
-        const { error: emailError } = await supabase.auth.updateUser({
-          email: data.email
-        });
-        
-        if (emailError) throw emailError;
-        
-        toast({
-          title: 'Email update initiated',
-          description: 'Please check your inbox to confirm your new email address.'
-        });
+      setUploading(true);
+      const fileExt = avatarFile.name.split('.').pop();
+      const filePath = `avatars/${user.id}-${Date.now()}.${fileExt}`;
+      
+      // Upload the file to Supabase Storage
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, avatarFile);
+      
+      if (uploadError) throw uploadError;
+      
+      // Get the public URL
+      const { data } = supabase.storage.from('avatars').getPublicUrl(filePath);
+      return data.publicUrl;
+    } catch (error) {
+      console.error('Error uploading avatar:', error);
+      return null;
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return;
+    
+    setIsSaving(true);
+    try {
+      let updatedAvatarUrl = avatarUrl;
+      
+      // Upload new avatar if selected
+      if (avatarFile) {
+        const newAvatarUrl = await uploadAvatar();
+        if (newAvatarUrl) {
+          updatedAvatarUrl = newAvatarUrl;
+        }
       }
       
-      // Update profile info
-      await updateProfile({
-        full_name: data.full_name,
-        phone: data.phone || null,
-        gender: data.gender || null,
-        preferred_gender_accommodation: data.preferred_gender_accommodation || 'common',
-        preferred_location: data.preferred_location || null,
-        preferred_property_type: data.preferred_property_type || null,
-        max_budget: data.max_budget,
-        notifications_enabled: data.notifications_enabled
-      });
+      // Update profile
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          full_name: fullName,
+          phone,
+          avatar_url: updatedAvatarUrl,
+          gender,
+          preferred_gender_accommodation: preferredGender,
+          preferred_location: preferredLocation,
+          preferred_property_type: preferredPropertyType,
+          max_budget: maxBudget === '' ? null : maxBudget,
+          notifications_enabled: notificationsEnabled,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', user.id);
       
-      setSuccess('Your profile has been updated successfully.');
+      if (error) throw error;
+      
+      // Refresh the profile
+      await refreshProfile();
       
       toast({
-        title: 'Profile updated',
-        description: 'Your profile information has been updated successfully.'
+        title: 'Settings updated',
+        description: 'Your profile settings have been updated successfully',
       });
     } catch (error: any) {
       console.error('Error updating profile:', error);
-      setError(error.message || 'An error occurred while updating your profile.');
-      
       toast({
-        title: 'Update failed',
-        description: error.message || 'An error occurred while updating your profile.',
-        variant: 'destructive'
+        title: 'Error',
+        description: error.message || 'Failed to update profile. Please try again.',
+        variant: 'destructive',
       });
     } finally {
-      setIsSubmitting(false);
-    }
-  };
-  
-  const onPasswordSubmit = async (data: PasswordFormValues) => {
-    setIsSubmitting(true);
-    setError(null);
-    setSuccess(null);
-    
-    try {
-      // First verify the current password is correct by trying to sign in
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email: user!.email!,
-        password: data.current_password
-      });
-      
-      if (signInError) {
-        throw new Error('Current password is incorrect');
-      }
-      
-      // If sign-in successful, update the password
-      const { error: updateError } = await supabase.auth.updateUser({
-        password: data.new_password
-      });
-      
-      if (updateError) throw updateError;
-      
-      setSuccess('Your password has been updated successfully.');
-      passwordForm.reset();
-      
-      toast({
-        title: 'Password updated',
-        description: 'Your password has been updated successfully.'
-      });
-    } catch (error: any) {
-      console.error('Error updating password:', error);
-      setError(error.message || 'An error occurred while updating your password.');
-      
-      toast({
-        title: 'Password update failed',
-        description: error.message || 'An error occurred while updating your password.',
-        variant: 'destructive'
-      });
-    } finally {
-      setIsSubmitting(false);
+      setIsSaving(false);
+      setAvatarFile(null); // Clear the file input
     }
   };
 
@@ -204,382 +153,203 @@ const UserSettings = () => {
     <DashboardLayout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Account Settings</h1>
+          <h1 className="text-3xl font-bold tracking-tight">User Settings</h1>
           <p className="text-muted-foreground">
             Manage your account settings and preferences
           </p>
         </div>
-
-        <Tabs defaultValue="profile" className="space-y-6">
-          <TabsList>
-            <TabsTrigger value="profile">Profile</TabsTrigger>
-            <TabsTrigger value="password">Password</TabsTrigger>
-            <TabsTrigger value="preferences">Preferences</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="profile">
+        
+        <form onSubmit={handleSubmit}>
+          <div className="grid gap-6">
             <Card>
               <CardHeader>
                 <CardTitle>Profile Information</CardTitle>
                 <CardDescription>
-                  Update your personal information and contact details
+                  Update your personal information and how we can contact you
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                <Form {...profileForm}>
-                  <form onSubmit={profileForm.handleSubmit(onProfileSubmit)} className="space-y-4">
-                    <FormField
-                      control={profileForm.control}
-                      name="full_name"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Full Name</FormLabel>
-                          <FormControl>
-                            <div className="relative">
-                              <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                              <Input className="pl-10" placeholder="Your name" {...field} />
-                            </div>
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
+                <div className="flex flex-col items-center space-y-4 sm:flex-row sm:space-y-0 sm:space-x-4">
+                  <Avatar className="h-24 w-24">
+                    {avatarUrl ? (
+                      <AvatarImage src={avatarUrl} alt={fullName || 'User'} />
+                    ) : (
+                      <AvatarFallback className="text-xl">
+                        <User className="h-12 w-12" />
+                      </AvatarFallback>
+                    )}
+                  </Avatar>
+                  <div className="flex flex-col space-y-2">
+                    <Label htmlFor="avatar" className="text-sm font-medium">
+                      Profile Picture
+                    </Label>
+                    <Input
+                      id="avatar"
+                      type="file"
+                      accept="image/*"
+                      onChange={handleAvatarChange}
+                      className="max-w-xs"
                     />
-
-                    <FormField
-                      control={profileForm.control}
-                      name="email"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Email</FormLabel>
-                          <FormControl>
-                            <div className="relative">
-                              <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                              <Input className="pl-10" placeholder="Your email" {...field} />
-                            </div>
-                          </FormControl>
-                          <FormDescription>
-                            Changing your email will require verification
-                          </FormDescription>
-                          <FormMessage />
-                        </FormItem>
-                      )}
+                    <p className="text-xs text-muted-foreground">
+                      Supported formats: JPG, PNG. Max size: 2MB
+                    </p>
+                  </div>
+                </div>
+                
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="fullName">Full Name</Label>
+                    <Input
+                      id="fullName"
+                      value={fullName}
+                      onChange={(e) => setFullName(e.target.value)}
+                      placeholder="Your full name"
                     />
-
-                    <FormField
-                      control={profileForm.control}
-                      name="phone"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Phone Number</FormLabel>
-                          <FormControl>
-                            <div className="relative">
-                              <Phone className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                              <Input className="pl-10" placeholder="Your phone number" {...field} />
-                            </div>
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Email</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      value={email}
+                      disabled
+                      placeholder="Your email address"
                     />
-
-                    <FormField
-                      control={profileForm.control}
-                      name="gender"
-                      render={({ field }) => (
-                        <FormItem className="space-y-3">
-                          <FormLabel>Gender</FormLabel>
-                          <FormControl>
-                            <RadioGroup
-                              onValueChange={field.onChange}
-                              defaultValue={field.value}
-                              className="flex flex-col space-y-1"
-                            >
-                              <FormItem className="flex items-center space-x-3 space-y-0">
-                                <FormControl>
-                                  <RadioGroupItem value="male" />
-                                </FormControl>
-                                <FormLabel className="font-normal">
-                                  Male
-                                </FormLabel>
-                              </FormItem>
-                              <FormItem className="flex items-center space-x-3 space-y-0">
-                                <FormControl>
-                                  <RadioGroupItem value="female" />
-                                </FormControl>
-                                <FormLabel className="font-normal">
-                                  Female
-                                </FormLabel>
-                              </FormItem>
-                              <FormItem className="flex items-center space-x-3 space-y-0">
-                                <FormControl>
-                                  <RadioGroupItem value="other" />
-                                </FormControl>
-                                <FormLabel className="font-normal">
-                                  Other
-                                </FormLabel>
-                              </FormItem>
-                            </RadioGroup>
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
+                    <p className="text-xs text-muted-foreground">
+                      Contact support to update your email address
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="phone">Phone Number</Label>
+                    <Input
+                      id="phone"
+                      value={phone || ''}
+                      onChange={(e) => setPhone(e.target.value)}
+                      placeholder="Your phone number"
                     />
-
-                    <Button type="submit" disabled={isSubmitting} className="w-full sm:w-auto">
-                      {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                      Save Profile Information
-                    </Button>
-                  </form>
-                </Form>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="gender">Gender</Label>
+                    <Select 
+                      value={gender} 
+                      onValueChange={(value) => setGender(value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select your gender" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="male">Male</SelectItem>
+                        <SelectItem value="female">Female</SelectItem>
+                        <SelectItem value="other">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
               </CardContent>
             </Card>
-          </TabsContent>
-
-          <TabsContent value="password">
-            <Card>
-              <CardHeader>
-                <CardTitle>Change Password</CardTitle>
-                <CardDescription>
-                  Update your password to secure your account
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <Form {...passwordForm}>
-                  <form onSubmit={passwordForm.handleSubmit(onPasswordSubmit)} className="space-y-4">
-                    <FormField
-                      control={passwordForm.control}
-                      name="current_password"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Current Password</FormLabel>
-                          <FormControl>
-                            <div className="relative">
-                              <KeyRound className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                              <Input className="pl-10" type="password" placeholder="••••••••" {...field} />
-                            </div>
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={passwordForm.control}
-                      name="new_password"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>New Password</FormLabel>
-                          <FormControl>
-                            <div className="relative">
-                              <KeyRound className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                              <Input className="pl-10" type="password" placeholder="••••••••" {...field} />
-                            </div>
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={passwordForm.control}
-                      name="confirm_password"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Confirm New Password</FormLabel>
-                          <FormControl>
-                            <div className="relative">
-                              <KeyRound className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                              <Input className="pl-10" type="password" placeholder="••••••••" {...field} />
-                            </div>
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <Button type="submit" disabled={isSubmitting} className="w-full sm:w-auto">
-                      {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                      Update Password
-                    </Button>
-                  </form>
-                </Form>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="preferences">
+            
             <Card>
               <CardHeader>
                 <CardTitle>Accommodation Preferences</CardTitle>
                 <CardDescription>
-                  Set your preferences for accommodation recommendations
+                  Set your preferences for accommodation to get personalized recommendations
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                <Form {...profileForm}>
-                  <form onSubmit={profileForm.handleSubmit(onProfileSubmit)} className="space-y-4">
-                    <FormField
-                      control={profileForm.control}
-                      name="preferred_gender_accommodation"
-                      render={({ field }) => (
-                        <FormItem className="space-y-3">
-                          <FormLabel>Preferred Accommodation Type</FormLabel>
-                          <FormControl>
-                            <RadioGroup
-                              onValueChange={field.onChange}
-                              defaultValue={field.value}
-                              className="flex flex-col space-y-1"
-                            >
-                              <FormItem className="flex items-center space-x-3 space-y-0">
-                                <FormControl>
-                                  <RadioGroupItem value="boys" />
-                                </FormControl>
-                                <FormLabel className="font-normal">
-                                  Boys Accommodation
-                                </FormLabel>
-                              </FormItem>
-                              <FormItem className="flex items-center space-x-3 space-y-0">
-                                <FormControl>
-                                  <RadioGroupItem value="girls" />
-                                </FormControl>
-                                <FormLabel className="font-normal">
-                                  Girls Accommodation
-                                </FormLabel>
-                              </FormItem>
-                              <FormItem className="flex items-center space-x-3 space-y-0">
-                                <FormControl>
-                                  <RadioGroupItem value="common" />
-                                </FormControl>
-                                <FormLabel className="font-normal">
-                                  No Preference
-                                </FormLabel>
-                              </FormItem>
-                            </RadioGroup>
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="preferredGender">Preferred Accommodation Type</Label>
+                    <Select 
+                      value={preferredGender} 
+                      onValueChange={(value: 'boys' | 'girls' | 'common') => setPreferredGender(value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select accommodation type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="boys">Boys Hostel/PG</SelectItem>
+                        <SelectItem value="girls">Girls Hostel/PG</SelectItem>
+                        <SelectItem value="common">Common/Co-ed</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="preferredLocation">Preferred Location</Label>
+                    <Input
+                      id="preferredLocation"
+                      value={preferredLocation || ''}
+                      onChange={(e) => setPreferredLocation(e.target.value)}
+                      placeholder="e.g., North Campus, South Delhi"
                     />
-
-                    <FormField
-                      control={profileForm.control}
-                      name="preferred_location"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Preferred Location</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl>
-                              <SelectTrigger className="w-full">
-                                <div className="flex items-center">
-                                  <MapPin className="mr-2 h-4 w-4 text-muted-foreground" />
-                                  <SelectValue placeholder="Select a location" />
-                                </div>
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="">No preference</SelectItem>
-                              {locationOptions.map((location) => (
-                                <SelectItem key={location} value={location}>
-                                  {location}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="preferredPropertyType">Preferred Property Type</Label>
+                    <Select 
+                      value={preferredPropertyType || ''} 
+                      onValueChange={(value) => setPreferredPropertyType(value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select property type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="hostel">Hostel</SelectItem>
+                        <SelectItem value="pg">PG</SelectItem>
+                        <SelectItem value="apartment">Apartment</SelectItem>
+                        <SelectItem value="independent">Independent Room</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="budget">Monthly Budget (₹)</Label>
+                    <Input
+                      id="budget"
+                      type="number"
+                      value={maxBudget}
+                      onChange={(e) => {
+                        const value = e.target.value ? parseInt(e.target.value) : '';
+                        setMaxBudget(value);
+                      }}
+                      placeholder="Your maximum monthly budget"
+                      min="0"
+                      step="500"
                     />
-
-                    <FormField
-                      control={profileForm.control}
-                      name="preferred_property_type"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Preferred Property Type</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl>
-                              <SelectTrigger className="w-full">
-                                <div className="flex items-center">
-                                  <Building className="mr-2 h-4 w-4 text-muted-foreground" />
-                                  <SelectValue placeholder="Select a property type" />
-                                </div>
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="">No preference</SelectItem>
-                              <SelectItem value="pg">PG</SelectItem>
-                              <SelectItem value="hostel">Hostel</SelectItem>
-                              <SelectItem value="independent">Independent Room</SelectItem>
-                              <SelectItem value="rented">Rented House</SelectItem>
-                              <SelectItem value="hotel">Hotel</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={profileForm.control}
-                      name="max_budget"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Maximum Budget (₹/month)</FormLabel>
-                          <FormControl>
-                            <Input type="number" placeholder="Your monthly budget" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={profileForm.control}
-                      name="notifications_enabled"
-                      render={({ field }) => (
-                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                          <div className="space-y-0.5">
-                            <FormLabel className="text-base">
-                              Notifications
-                            </FormLabel>
-                            <FormDescription>
-                              Receive notifications about new properties that match your preferences
-                            </FormDescription>
-                          </div>
-                          <FormControl>
-                            <Switch
-                              checked={field.value}
-                              onCheckedChange={field.onChange}
-                            />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
-
-                    <Button type="submit" disabled={isSubmitting} className="w-full sm:w-auto">
-                      {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                      Save Preferences
-                    </Button>
-                  </form>
-                </Form>
+                  </div>
+                </div>
               </CardContent>
             </Card>
-          </TabsContent>
-        </Tabs>
-
-        {error && (
-          <Alert variant="destructive">
-            <AlertTitle>Error</AlertTitle>
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        )}
-
-        {success && (
-          <Alert className="bg-green-50 text-green-800 border-green-200">
-            <AlertTitle>Success</AlertTitle>
-            <AlertDescription>{success}</AlertDescription>
-          </Alert>
-        )}
+            
+            <Card>
+              <CardHeader>
+                <CardTitle>Notifications</CardTitle>
+                <CardDescription>
+                  Configure how you receive notifications from us
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="notifications">Email Notifications</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Receive notifications about new properties and booking updates
+                    </p>
+                  </div>
+                  <Switch 
+                    id="notifications"
+                    checked={notificationsEnabled}
+                    onCheckedChange={setNotificationsEnabled}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+            
+            <div className="flex justify-end">
+              <Button type="submit" disabled={isSaving || uploading}>
+                {(isSaving || uploading) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {isSaving ? 'Saving changes...' : 'Save changes'}
+              </Button>
+            </div>
+          </div>
+        </form>
       </div>
     </DashboardLayout>
   );

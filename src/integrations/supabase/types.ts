@@ -77,6 +77,35 @@ export type Database = {
         }
         Relationships: []
       }
+      favorites: {
+        Row: {
+          created_at: string | null
+          id: string
+          property_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          property_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          property_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "favorites_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       locations: {
         Row: {
           created_at: string
@@ -143,8 +172,14 @@ export type Database = {
           created_at: string
           email: string | null
           full_name: string | null
+          gender: string | null
           id: string
+          max_budget: number | null
+          notifications_enabled: boolean | null
           phone: string | null
+          preferred_gender_accommodation: string | null
+          preferred_location: string | null
+          preferred_property_type: string | null
           role: Database["public"]["Enums"]["user_role"]
           updated_at: string
         }
@@ -153,8 +188,14 @@ export type Database = {
           created_at?: string
           email?: string | null
           full_name?: string | null
+          gender?: string | null
           id: string
+          max_budget?: number | null
+          notifications_enabled?: boolean | null
           phone?: string | null
+          preferred_gender_accommodation?: string | null
+          preferred_location?: string | null
+          preferred_property_type?: string | null
           role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string
         }
@@ -163,8 +204,14 @@ export type Database = {
           created_at?: string
           email?: string | null
           full_name?: string | null
+          gender?: string | null
           id?: string
+          max_budget?: number | null
+          notifications_enabled?: boolean | null
           phone?: string | null
+          preferred_gender_accommodation?: string | null
+          preferred_location?: string | null
+          preferred_property_type?: string | null
           role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string
         }

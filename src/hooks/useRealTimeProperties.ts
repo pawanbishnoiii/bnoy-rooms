@@ -24,16 +24,18 @@ export const useRealTimeProperties = (options: UseRealTimePropertiesOptions = {}
 
     // Set up real-time subscription
     const channel = supabase
-      .channel('public:properties')
+      .channel('properties-changes')
       .on('postgres_changes', {
         event: '*',
         schema: 'public',
         table: 'properties'
       }, () => {
-        // Refresh properties when there's a change
+        console.log('Received real-time update for properties');
         fetchProperties();
       })
-      .subscribe();
+      .subscribe((status) => {
+        console.log('Realtime subscription status:', status);
+      });
 
     return () => {
       supabase.removeChannel(channel);

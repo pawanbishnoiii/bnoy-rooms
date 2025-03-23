@@ -13,7 +13,12 @@ export interface UserProfile {
   avatar_url: string | null;
   created_at: string;
   updated_at: string;
-  gender?: GenderOption;
+  gender?: GenderOption | string;
+  preferred_gender_accommodation?: GenderOption | string;
+  preferred_location?: string;
+  preferred_property_type?: string;
+  max_budget?: number;
+  notifications_enabled?: boolean;
 }
 
 export interface Merchant {
@@ -87,6 +92,14 @@ export interface PropertyFacility {
   property_id: string;
   facility_id: string;
   created_at: string;
+}
+
+export interface Favorite {
+  id: string;
+  user_id: string;
+  property_id: string;
+  created_at: string;
+  property?: Property;
 }
 
 export interface Review {
