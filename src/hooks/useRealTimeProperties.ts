@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Property, Location, PropertyImage, PropertyCategory, GenderOption } from '@/types';
@@ -139,6 +138,7 @@ export const useRealTimeProperties = (options: UseRealTimePropertiesOptions = {}
           created_at: img.created_at
         })),
         rooms: property.rooms || [],
+        category: property.category || 'pg', // Ensure category has a default value
         // Calculate available rooms
         available_rooms: property.rooms ? property.rooms.filter((room: any) => room.is_available).length : 0,
         total_rooms: property.rooms ? property.rooms.length : 0

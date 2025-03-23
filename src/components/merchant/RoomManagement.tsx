@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -45,7 +44,6 @@ const RoomManagement = ({ propertyId }: { propertyId: string }) => {
   const fetchPropertyAndRooms = async () => {
     setLoading(true);
     try {
-      // Fetch property details
       const { data: propertyData, error: propertyError } = await supabase
         .from('properties')
         .select('*')
@@ -55,7 +53,6 @@ const RoomManagement = ({ propertyId }: { propertyId: string }) => {
       if (propertyError) throw propertyError;
       setProperty(propertyData);
 
-      // Fetch rooms for this property
       const { data: roomsData, error: roomsError } = await supabase
         .from('rooms')
         .select('*, images:room_images(*)')
@@ -137,26 +134,23 @@ const RoomManagement = ({ propertyId }: { propertyId: string }) => {
         const fileName = `${roomId}/${Date.now()}.${fileExt}`;
         const filePath = `room_images/${fileName}`;
 
-        // Upload to Storage
         const { error: uploadError } = await supabase.storage
           .from('properties')
           .upload(filePath, file);
 
         if (uploadError) throw uploadError;
 
-        // Get public URL
         const { data: publicUrlData } = supabase.storage
           .from('properties')
           .getPublicUrl(filePath);
 
         if (publicUrlData && publicUrlData.publicUrl) {
-          // Add image to room_images table
           const { error: insertError } = await supabase
             .from('room_images')
             .insert({
               room_id: roomId,
               image_url: publicUrlData.publicUrl,
-              is_primary: i === 0 // First image is primary
+              is_primary: i === 0
             });
 
           if (insertError) throw insertError;
@@ -202,7 +196,6 @@ const RoomManagement = ({ propertyId }: { propertyId: string }) => {
       let savedRoomId: string;
 
       if (currentRoom) {
-        // Update existing room
         const { data, error } = await supabase
           .from('rooms')
           .update(roomData)
@@ -218,7 +211,6 @@ const RoomManagement = ({ propertyId }: { propertyId: string }) => {
           description: 'Room updated successfully',
         });
       } else {
-        // Create new room
         const { data, error } = await supabase
           .from('rooms')
           .insert(roomData)
@@ -234,12 +226,10 @@ const RoomManagement = ({ propertyId }: { propertyId: string }) => {
         });
       }
 
-      // Upload images if any
       if (imageFiles.length > 0) {
         await uploadRoomImages(savedRoomId);
       }
 
-      // Refresh rooms data
       await fetchPropertyAndRooms();
       setIsDialogOpen(false);
     } catch (error: any) {
@@ -263,7 +253,6 @@ const RoomManagement = ({ propertyId }: { propertyId: string }) => {
 
       if (error) throw error;
 
-      // Refresh rooms data
       await fetchPropertyAndRooms();
       
       toast({
@@ -340,7 +329,7 @@ const RoomManagement = ({ propertyId }: { propertyId: string }) => {
                     </TableCell>
                     <TableCell>₹{room.monthly_price.toLocaleString()}</TableCell>
                     <TableCell>
-                      <Badge variant={room.is_available ? "success" : "secondary"}>
+                      <Badge variant={room.is_available ? "default" : "secondary"}>
                         {room.is_available ? 'Available' : 'Unavailable'}
                       </Badge>
                     </TableCell>

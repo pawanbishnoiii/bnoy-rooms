@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -12,6 +11,7 @@ import { Bookmark, Building, Calendar, Home, MapPin, Star } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Property, Booking, Facility, PropertyImage, Location } from '@/types';
 import AIRecommendations from '@/components/properties/AIRecommendations';
+import { GenderOption } from '@/types';
 
 const StudentDashboard = () => {
   const { user, profile } = useAuth();
@@ -21,6 +21,8 @@ const StudentDashboard = () => {
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
   const navigate = useNavigate();
+
+  const gender: GenderOption = 'common'; // Use one of the allowed values: 'boys', 'girls', or 'common'
 
   useEffect(() => {
     if (user) {

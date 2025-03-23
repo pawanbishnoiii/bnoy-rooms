@@ -1,4 +1,3 @@
-
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -20,6 +19,7 @@ type AuthContextType = {
   updateProfile: (updates: Partial<UserProfile>) => Promise<void>;
   sendPasswordResetEmail: (email: string) => Promise<void>;
   isAuthenticated: boolean;
+  refreshProfile: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -34,7 +34,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const { toast } = useToast();
 
   useEffect(() => {
-    // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
@@ -47,7 +46,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     });
 
-    // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
         console.log('Auth state changed:', _event, session?.user?.email);
@@ -102,6 +100,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const refreshProfile = async () => {
+    if (user) {
+      await fetchUserProfile(user.id);
     }
   };
 
@@ -226,7 +230,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setIsLoading(true);
       console.log('Signing out user');
       
-      // Clear any local session data first
       setSession(null);
       setUser(null);
       setProfile(null);
@@ -240,7 +243,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw error;
       }
 
-      // Successfully signed out
       console.log('Successfully signed out');
       
       toast({
@@ -248,7 +250,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         description: 'You have been successfully signed out'
       });
       
-      // Force reload the page to clear any cached data
       window.location.href = '/';
     } catch (error: any) {
       console.error('Error signing out:', error);
@@ -324,7 +325,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setIsLoading(false);
     }
   };
-  
+
   const value = {
     session,
     user,
@@ -338,7 +339,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     signOut,
     updateProfile,
     sendPasswordResetEmail,
-    isAuthenticated
+    isAuthenticated,
+    refreshProfile
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

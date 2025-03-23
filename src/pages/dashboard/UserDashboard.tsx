@@ -107,7 +107,7 @@ const UserDashboard = () => {
           merchant_id: '',  // Default value since not fetched
           name: propertyData.name,
           type: propertyData.type || '',
-          gender: 'common', // Default value since not fetched
+          gender: 'common' as GenderOption, // Use as GenderOption to ensure type safety
           description: null,
           location_id: null,
           address: propertyData.address,
@@ -118,6 +118,7 @@ const UserDashboard = () => {
           is_verified: true, // Default value since not fetched
           created_at: '',    // Default value since not fetched
           updated_at: '',    // Default value since not fetched
+          category: 'pg' as PropertyCategory, // Add default category
           images: propertyImages,
           location: null,
           facilities: []
@@ -166,7 +167,7 @@ const UserDashboard = () => {
           merchant_id: prop.merchant_id,
           name: prop.name,
           type: prop.type,
-          gender: prop.gender,
+          gender: prop.gender as GenderOption,
           description: prop.description,
           location_id: prop.location_id,
           address: prop.address,
@@ -177,6 +178,7 @@ const UserDashboard = () => {
           is_verified: prop.is_verified || false,
           created_at: prop.created_at,
           updated_at: prop.updated_at,
+          category: prop.category || 'pg' as PropertyCategory, // Add category with default
           location: locationData,
           images: propertyImages,
           facilities: []
