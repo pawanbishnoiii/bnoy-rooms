@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { format } from 'date-fns';
@@ -10,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -18,7 +18,7 @@ import { cn } from "@/lib/utils";
 import { CalendarIcon, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { TimeFrame, Room } from "@/types";
+import { TimeFrame, Room, BookingStatus } from "@/types";
 
 interface BookingFormProps {
   propertyId: string;
@@ -69,7 +69,6 @@ const BookingForm = ({ propertyId, price, timeFrame, onSuccess, roomId: defaultR
     },
   });
 
-  // Fetch available rooms for this property
   useEffect(() => {
     const fetchRooms = async () => {
       try {
@@ -83,7 +82,6 @@ const BookingForm = ({ propertyId, price, timeFrame, onSuccess, roomId: defaultR
         
         setRooms(data || []);
         
-        // If a room ID is provided or in state, set it as selected
         const roomIdToUse = defaultRoomId || (location.state as any)?.selectedRoomId;
         if (roomIdToUse && data) {
           const room = data.find(r => r.id === roomIdToUse);
@@ -91,7 +89,6 @@ const BookingForm = ({ propertyId, price, timeFrame, onSuccess, roomId: defaultR
             setSelectedRoom(room);
             form.setValue('roomId', room.id);
             
-            // Update price based on selected room
             if (timeFrame === 'monthly' && room.monthly_price) {
               setTotalAmount(room.monthly_price);
             } else if (timeFrame === 'daily' && room.daily_price) {
@@ -109,7 +106,6 @@ const BookingForm = ({ propertyId, price, timeFrame, onSuccess, roomId: defaultR
     }
   }, [propertyId, defaultRoomId, location.state]);
 
-  // Update total amount when dates change
   useEffect(() => {
     const checkInDate = form.getValues('checkInDate');
     const checkOutDate = form.getValues('checkOutDate');
@@ -161,19 +157,16 @@ const BookingForm = ({ propertyId, price, timeFrame, onSuccess, roomId: defaultR
     setIsLoading(true);
 
     try {
-      // Calculate total amount based on time frame
       const checkInDate = values.checkInDate;
       const checkOutDate = values.checkOutDate || (timeFrame === 'daily' ? new Date(checkInDate.getTime() + 24*60*60*1000) : null);
       
-      let units = 1; // Default to 1 month for monthly bookings
+      let units = 1;
       if (timeFrame === 'daily' && checkOutDate) {
-        // Calculate days difference
         const diffTime = Math.abs(checkOutDate.getTime() - checkInDate.getTime());
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
         units = Math.max(diffDays, 1);
       }
 
-      // Fix: Convert Date objects to ISO strings for Supabase
       const bookingData = {
         property_id: propertyId,
         room_id: values.roomId || null,
@@ -187,7 +180,7 @@ const BookingForm = ({ propertyId, price, timeFrame, onSuccess, roomId: defaultR
           (timeFrame === 'monthly' ? selectedRoom.monthly_price : selectedRoom.daily_price || 0) : 
           price,
         total_amount: totalAmount,
-        status: 'pending',
+        status: 'pending' as BookingStatus,
         number_of_guests: values.numberOfGuests,
         special_requests: values.specialRequests || '',
         payment_status: 'pending',

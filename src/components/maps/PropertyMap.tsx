@@ -2,10 +2,6 @@
 import React, { useEffect, useRef } from 'react';
 import { Property } from '@/types';
 
-// In a real implementation, we would use actual Leaflet imports
-// import L from 'leaflet';
-// import 'leaflet/dist/leaflet.css';
-
 interface PropertyMapProps {
   property?: Property;
   properties?: Property[];
@@ -31,10 +27,12 @@ const PropertyMap: React.FC<PropertyMapProps> = ({
     let mapCenter: [number, number];
     if (center) {
       mapCenter = center;
+    } else if (property && property.location?.latitude && property.location?.longitude) {
+      mapCenter = [property.location.latitude as number, property.location.longitude as number];
     } else if (property && property.latitude && property.longitude) {
       mapCenter = [property.latitude as number, property.longitude as number];
-    } else if (properties.length > 0 && properties[0].latitude && properties[0].longitude) {
-      mapCenter = [properties[0].latitude as number, properties[0].longitude as number];
+    } else if (properties.length > 0 && properties[0].location?.latitude && properties[0].location?.longitude) {
+      mapCenter = [properties[0].location.latitude as number, properties[0].location.longitude as number];
     } else {
       // Default to center of India if no coordinates provided
       mapCenter = [20.5937, 78.9629];
@@ -50,18 +48,25 @@ const PropertyMap: React.FC<PropertyMapProps> = ({
     // }).addTo(map);
     
     // Add markers for properties
-    if (property && property.latitude && property.longitude) {
-      console.log('Would add marker for single property:', property.name);
-      // In real implementation: 
-      // L.marker([property.latitude, property.longitude])
-      //   .addTo(map)
-      //   .bindPopup(`<b>${property.name}</b><br>${property.address}`);
+    if (property) {
+      const lat = property.location?.latitude || property.latitude;
+      const lng = property.location?.longitude || property.longitude;
+      
+      if (lat && lng) {
+        console.log('Would add marker for single property:', property.name);
+        // In real implementation: 
+        // L.marker([lat, lng])
+        //   .addTo(map)
+        //   .bindPopup(`<b>${property.name}</b><br>${property.address}`);
+      }
     } else if (properties.length > 0) {
-      console.log(`Would add ${properties.length} markers for properties`);
+      console.log(`Would add ${properties.length} markers to the map`);
       // In real implementation:
       // properties.forEach(p => {
-      //   if (p.latitude && p.longitude) {
-      //     L.marker([p.latitude, p.longitude])
+      //   const lat = p.location?.latitude || p.latitude;
+      //   const lng = p.location?.longitude || p.longitude;
+      //   if (lat && lng) {
+      //     L.marker([lat, lng])
       //       .addTo(map)
       //       .bindPopup(`<b>${p.name}</b><br>${p.address}`);
       //   }

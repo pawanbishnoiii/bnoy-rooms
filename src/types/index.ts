@@ -82,6 +82,12 @@ export interface Property {
   electricity_included?: boolean;
   cleaning_included?: boolean;
   food_included?: boolean;
+  // For AI recommendations
+  average_rating?: number;
+  latitude?: number;
+  longitude?: number;
+  matchScore?: number;
+  ai_strengths?: string[];
 }
 
 // Room interface
@@ -154,6 +160,7 @@ export interface Booking {
   created_at: string;
   updated_at: string;
   property?: Property;
+  user?: UserProfile;
 }
 
 // Review interface
@@ -186,4 +193,10 @@ export interface SystemSetting {
   value: string;
   created_at: string;
   updated_at: string;
+}
+
+// For AI property recommendations
+export interface PropertyWithScore extends Property {
+  matchScore?: number;
+  ai_strengths?: string[];
 }
