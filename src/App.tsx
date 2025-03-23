@@ -12,14 +12,12 @@ import Register from "./pages/auth/Register";
 import ForgotPassword from "./pages/auth/ForgotPassword";
 import ResetPassword from "./pages/auth/ResetPassword";
 import AuthCallback from "./pages/auth/AuthCallback";
-import MerchantDashboard from "./pages/dashboard/MerchantDashboard";
-import UserDashboard from "./pages/dashboard/UserDashboard";
-import StudentDashboard from "./pages/dashboard/StudentDashboard";
+import Dashboard from "./pages/dashboard/Dashboard";
 import UserSettings from "./pages/settings/UserSettings";
-import AdminDashboard from "./pages/dashboard/AdminDashboard";
 import Properties from "./pages/Properties";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import BookingConfirmation from "./pages/bookings/BookingConfirmation";
+import PropertyDetails from "./pages/properties/PropertyDetails";
 
 // Configure the Query Client with default settings
 const queryClient = new QueryClient({
@@ -46,6 +44,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/properties" element={<Properties />} />
+            <Route path="/properties/:propertyId" element={<PropertyDetails />} />
             
             {/* Auth routes */}
             <Route path="/auth/login" element={<Login />} />
@@ -60,169 +59,21 @@ const App = () => (
             <Route path="/forgot-password" element={<Navigate to="/auth/forgot-password" replace />} />
             <Route path="/reset-password" element={<Navigate to="/auth/reset-password" replace />} />
             
-            {/* Settings routes */}
+            {/* Unified Dashboard Route */}
+            <Route 
+              path="/dashboard/*" 
+              element={
+                <ProtectedRoute>
+                  <Dashboard />
+                </ProtectedRoute>
+              } 
+            />
+            
+            {/* Settings route */}
             <Route 
               path="/settings" 
               element={
                 <ProtectedRoute>
-                  <UserSettings />
-                </ProtectedRoute>
-              } 
-            />
-            
-            {/* Student Dashboard routes */}
-            <Route 
-              path="/student/dashboard" 
-              element={
-                <ProtectedRoute allowedRoles={['student']}>
-                  <StudentDashboard />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/student/bookings" 
-              element={
-                <ProtectedRoute allowedRoles={['student']}>
-                  <StudentDashboard />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/student/favorites" 
-              element={
-                <ProtectedRoute allowedRoles={['student']}>
-                  <StudentDashboard />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/student/reviews" 
-              element={
-                <ProtectedRoute allowedRoles={['student']}>
-                  <StudentDashboard />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/student/settings" 
-              element={
-                <ProtectedRoute allowedRoles={['student']}>
-                  <UserSettings />
-                </ProtectedRoute>
-              } 
-            />
-            
-            {/* Merchant Dashboard routes */}
-            <Route 
-              path="/merchant/dashboard" 
-              element={
-                <ProtectedRoute allowedRoles={['merchant']}>
-                  <MerchantDashboard />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/merchant/properties" 
-              element={
-                <ProtectedRoute allowedRoles={['merchant']}>
-                  <MerchantDashboard />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/merchant/properties/new" 
-              element={
-                <ProtectedRoute allowedRoles={['merchant']}>
-                  <MerchantDashboard />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/merchant/bookings" 
-              element={
-                <ProtectedRoute allowedRoles={['merchant']}>
-                  <MerchantDashboard />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/merchant/reviews" 
-              element={
-                <ProtectedRoute allowedRoles={['merchant']}>
-                  <MerchantDashboard />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/merchant/settings" 
-              element={
-                <ProtectedRoute allowedRoles={['merchant']}>
-                  <UserSettings />
-                </ProtectedRoute>
-              } 
-            />
-            
-            {/* Admin Dashboard routes */}
-            <Route 
-              path="/admin/dashboard" 
-              element={
-                <ProtectedRoute allowedRoles={['admin']}>
-                  <AdminDashboard />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/admin/users" 
-              element={
-                <ProtectedRoute allowedRoles={['admin']}>
-                  <AdminDashboard />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/admin/properties" 
-              element={
-                <ProtectedRoute allowedRoles={['admin']}>
-                  <AdminDashboard />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/admin/merchants" 
-              element={
-                <ProtectedRoute allowedRoles={['admin']}>
-                  <AdminDashboard />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/admin/bookings" 
-              element={
-                <ProtectedRoute allowedRoles={['admin']}>
-                  <AdminDashboard />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/admin/reviews" 
-              element={
-                <ProtectedRoute allowedRoles={['admin']}>
-                  <AdminDashboard />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/admin/locations" 
-              element={
-                <ProtectedRoute allowedRoles={['admin']}>
-                  <AdminDashboard />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/admin/settings" 
-              element={
-                <ProtectedRoute allowedRoles={['admin']}>
                   <UserSettings />
                 </ProtectedRoute>
               } 
