@@ -22,7 +22,7 @@ const formSchema = z.object({
 type FormValues = z.infer<typeof formSchema>;
 
 const Login = () => {
-  const { signIn, signInWithGoogle, signInWithFacebook, isAuthenticated } = useAuth();
+  const { signIn, signInWithGoogle, signInWithFacebook, isAuthenticated, profile } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [error, setError] = useState<string | null>(null);
@@ -33,11 +33,19 @@ const Login = () => {
   const from = location.state?.from?.pathname || '/';
 
   useEffect(() => {
-    // If user is already authenticated, redirect them
-    if (isAuthenticated) {
-      navigate(from, { replace: true });
+    // If user is already authenticated, redirect them based on role
+    if (isAuthenticated && profile) {
+      if (profile.role === 'admin') {
+        navigate('/admin/dashboard', { replace: true });
+      } else if (profile.role === 'merchant') {
+        navigate('/merchant/dashboard', { replace: true });
+      } else if (profile.role === 'student') {
+        navigate('/student/dashboard', { replace: true });
+      } else {
+        navigate(from, { replace: true });
+      }
     }
-  }, [isAuthenticated, navigate, from]);
+  }, [isAuthenticated, navigate, from, profile]);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),

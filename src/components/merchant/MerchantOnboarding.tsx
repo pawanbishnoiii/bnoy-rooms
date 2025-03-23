@@ -1,333 +1,279 @@
 
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import { PropertyCategory } from '@/types';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Steps, Step } from '@/components/ui/steps';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Building, Hotel, Home, LibraryBig, BookOpen, Utensils, Users, Warehouse } from 'lucide-react';
+import { PropertyCategory } from '@/types';
+import { Badge } from '@/components/ui/badge';
+import { supabase } from '@/integrations/supabase/client';
+import {
+  Building,
+  Hotel,
+  Library,
+  School,
+  Utensils,
+  Home,
+  Store,
+  Users,
+  Loader2
+} from 'lucide-react';
 
+// Define the property categories with icons
 const propertyCategories = [
-  { id: 'pg', label: 'PG/Co-living', icon: <Building className="h-6 w-6" />, description: 'Paying Guest accommodations for students and working professionals' },
-  { id: 'hostel', label: 'Hostel', icon: <Users className="h-6 w-6" />, description: 'Shared rooms with multiple beds and common facilities' },
-  { id: 'dormitory', label: 'Dormitory', icon: <Users className="h-6 w-6" />, description: 'Large shared spaces with multiple beds' },
-  { id: 'independent_room', label: 'Independent Room', icon: <Home className="h-6 w-6" />, description: 'Private room for rent' },
-  { id: 'hotel', label: 'Hotel', icon: <Hotel className="h-6 w-6" />, description: 'Short-term stay with hotel amenities' },
-  { id: 'library', label: 'Library', icon: <LibraryBig className="h-6 w-6" />, description: 'Study space with books and resources' },
-  { id: 'coaching', label: 'Coaching Center', icon: <BookOpen className="h-6 w-6" />, description: 'Educational centers for academic support' },
-  { id: 'tiffin_delivery', label: 'Tiffin Delivery', icon: <Utensils className="h-6 w-6" />, description: 'Food delivery service for students and professionals' },
+  { id: 'pg', label: 'PG/Co-living', icon: Building },
+  { id: 'hostel', label: 'Hostel', icon: Users },
+  { id: 'dormitory', label: 'Dormitory', icon: Home },
+  { id: 'independent_room', label: 'Independent Room', icon: Home },
+  { id: 'hotel', label: 'Hotel', icon: Hotel },
+  { id: 'library', label: 'Library', icon: Library },
+  { id: 'coaching', label: 'Coaching Center', icon: School },
+  { id: 'tiffin_delivery', label: 'Tiffin Delivery', icon: Utensils },
 ];
 
-const MerchantOnboarding = () => {
-  const { user, profile, refreshProfile } = useAuth();
-  const navigate = useNavigate();
-  const { toast } = useToast();
-  const [loading, setLoading] = useState(false);
-  const [step, setStep] = useState(1);
+const MerchantOnboarding: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState<PropertyCategory | null>(null);
-  const [businessInfo, setBusinessInfo] = useState({
-    businessName: '',
-    contactPerson: '',
-    phone: profile?.phone || '',
-    email: profile?.email || '',
-    address: '',
-  });
+  const [currentStep, setCurrentStep] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
+  const { user, profile, refreshProfile } = useAuth();
+  const { toast } = useToast();
+  const navigate = useNavigate();
 
   const handleCategorySelect = (category: PropertyCategory) => {
     setSelectedCategory(category);
-    setStep(2);
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setBusinessInfo(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!user) {
+  const handleNextStep = () => {
+    if (currentStep === 0 && !selectedCategory) {
       toast({
-        title: "Authentication required",
-        description: "Please log in to continue",
-        variant: "destructive",
+        title: 'Please select a category',
+        description: 'You need to select a category to continue',
+        variant: 'destructive',
       });
       return;
     }
+    setCurrentStep(currentStep + 1);
+  };
+
+  const handlePrevStep = () => {
+    setCurrentStep(currentStep - 1);
+  };
+
+  const handleFinish = async () => {
+    if (!user || !selectedCategory) return;
     
-    if (!selectedCategory) {
-      toast({
-        title: "Category required",
-        description: "Please select a property category",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    setLoading(true);
-    
+    setIsLoading(true);
     try {
-      // Check if merchant profile already exists
-      const { data: existingMerchant, error: fetchError } = await supabase
-        .from('merchants')
-        .select('*')
-        .eq('id', user.id)
-        .single();
-      
-      if (fetchError && fetchError.code !== 'PGRST116') {
-        throw fetchError;
-      }
-      
-      let merchantData;
-      
-      if (existingMerchant) {
-        // Update existing merchant
-        const { data, error } = await supabase
-          .from('merchants')
-          .update({
-            business_name: businessInfo.businessName,
-            contact_person: businessInfo.contactPerson,
-            phone: businessInfo.phone,
-            email: businessInfo.email,
-            address: businessInfo.address,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', user.id)
-          .select()
-          .single();
-          
-        if (error) throw error;
-        merchantData = data;
-      } else {
-        // Create new merchant
-        const { data, error } = await supabase
-          .from('merchants')
-          .insert({
-            id: user.id,
-            business_name: businessInfo.businessName,
-            contact_person: businessInfo.contactPerson,
-            phone: businessInfo.phone,
-            email: businessInfo.email,
-            address: businessInfo.address,
-            is_verified: false,
-          })
-          .select()
-          .single();
-          
-        if (error) throw error;
-        merchantData = data;
-      }
-      
-      // Update user profile role to merchant if needed
-      if (profile?.role !== 'merchant') {
-        const { error: updateError } = await supabase
-          .from('profiles')
-          .update({ role: 'merchant' })
-          .eq('id', user.id);
-          
-        if (updateError) throw updateError;
-        
-        // Refresh the profile to get updated role
-        await refreshProfile();
-      }
-      
+      // Update the user's profile to include the selected property type
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          preferred_property_type: selectedCategory,
+          role: 'merchant', // Ensure the role is set to merchant
+        })
+        .eq('id', user.id);
+
+      if (error) throw error;
+
+      // Refresh the user profile to get the updated role
+      await refreshProfile();
+
       toast({
-        title: "Success!",
-        description: "Your merchant profile has been created successfully.",
+        title: 'Success!',
+        description: 'Your merchant account is now ready. You can start adding properties.',
       });
-      
-      // Navigate to merchant dashboard
+
+      // Redirect to the merchant dashboard
       navigate('/merchant/dashboard');
-      
     } catch (error: any) {
-      console.error('Error creating merchant profile:', error);
+      console.error('Merchant onboarding error:', error);
       toast({
-        title: "Failed to create profile",
-        description: error.message || "An unexpected error occurred",
-        variant: "destructive",
+        title: 'Error',
+        description: error.message || 'Failed to complete onboarding. Please try again.',
+        variant: 'destructive',
       });
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
   return (
-    <div className="container py-10 max-w-4xl mx-auto">
-      <Card className="shadow-md">
-        <CardHeader className="text-center">
-          <CardTitle className="text-2xl md:text-3xl">Become a Property Partner</CardTitle>
-          <CardDescription>
-            Join our platform and start listing your properties to reach thousands of students
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {step === 1 ? (
-            <div className="space-y-6">
-              <h3 className="text-lg font-medium">Select your business category</h3>
-              <p className="text-sm text-muted-foreground">Choose the type of service you want to offer on our platform</p>
+    <Card className="w-full max-w-4xl mx-auto">
+      <CardHeader>
+        <CardTitle className="text-2xl font-bold">Merchant Onboarding</CardTitle>
+        <CardDescription>
+          Set up your merchant account to start listing properties for booking.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <Steps value={currentStep} className="mb-8">
+          <Step value={0} title="Choose Category" />
+          <Step value={1} title="Business Details" />
+          <Step value={2} title="Review & Finish" />
+        </Steps>
+
+        {currentStep === 0 && (
+          <div className="space-y-6">
+            <h3 className="text-lg font-medium">What type of property or service do you offer?</h3>
+            <Tabs defaultValue="grid" className="w-full">
+              <TabsList className="mb-4">
+                <TabsTrigger value="grid">Grid View</TabsTrigger>
+                <TabsTrigger value="list">List View</TabsTrigger>
+              </TabsList>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-6">
-                {propertyCategories.map((category) => (
-                  <div
-                    key={category.id}
-                    className="border rounded-lg p-4 cursor-pointer hover:border-primary hover:bg-primary/5 transition-all"
-                    onClick={() => handleCategorySelect(category.id as PropertyCategory)}
-                  >
-                    <div className="flex items-center mb-2">
-                      <div className="p-2 rounded-full bg-primary/10 text-primary mr-3">
-                        {category.icon}
+              <TabsContent value="grid">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  {propertyCategories.map((category) => {
+                    const IconComponent = category.icon;
+                    return (
+                      <div
+                        key={category.id}
+                        onClick={() => handleCategorySelect(category.id as PropertyCategory)}
+                        className={`
+                          border rounded-lg p-4 text-center cursor-pointer transition
+                          hover:border-primary hover:shadow
+                          ${selectedCategory === category.id ? 'border-2 border-primary bg-primary/5' : ''}
+                        `}
+                      >
+                        <IconComponent className="h-10 w-10 mx-auto mb-2 text-primary" />
+                        <h4 className="font-medium">{category.label}</h4>
                       </div>
-                      <h3 className="font-medium">{category.label}</h3>
-                    </div>
-                    <p className="text-sm text-muted-foreground">{category.description}</p>
-                  </div>
-                ))}
+                    );
+                  })}
+                </div>
+              </TabsContent>
+              
+              <TabsContent value="list">
+                <div className="space-y-2">
+                  {propertyCategories.map((category) => {
+                    const IconComponent = category.icon;
+                    return (
+                      <div
+                        key={category.id}
+                        onClick={() => handleCategorySelect(category.id as PropertyCategory)}
+                        className={`
+                          flex items-center border rounded-lg p-4 cursor-pointer transition
+                          hover:border-primary hover:shadow
+                          ${selectedCategory === category.id ? 'border-2 border-primary bg-primary/5' : ''}
+                        `}
+                      >
+                        <IconComponent className="h-6 w-6 mr-4 text-primary" />
+                        <h4 className="font-medium">{category.label}</h4>
+                      </div>
+                    );
+                  })}
+                </div>
+              </TabsContent>
+            </Tabs>
+          </div>
+        )}
+
+        {currentStep === 1 && (
+          <div className="space-y-6">
+            <h3 className="text-lg font-medium">Your Business Details</h3>
+            <p className="text-muted-foreground">
+              You've selected:
+              <Badge className="ml-2 bg-primary">
+                {propertyCategories.find(c => c.id === selectedCategory)?.label || selectedCategory}
+              </Badge>
+            </p>
+            
+            <div className="bg-muted p-4 rounded-lg">
+              <p className="text-sm text-muted-foreground">
+                Your profile information will be used for your merchant account. If you need to update your profile information, you can do so in the settings page after completing the onboarding process.
+              </p>
+            </div>
+
+            <div className="grid gap-4 p-4 border rounded-lg">
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                <div className="font-medium">Name:</div>
+                <div>{profile?.full_name || user?.email}</div>
+                
+                <div className="font-medium">Email:</div>
+                <div>{user?.email}</div>
+                
+                <div className="font-medium">Phone:</div>
+                <div>{profile?.phone || 'Not provided'}</div>
               </div>
             </div>
-          ) : (
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div>
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-medium">Business Information</h3>
-                  <Button 
-                    type="button" 
-                    variant="ghost" 
-                    size="sm"
-                    onClick={() => setStep(1)}
-                  >
-                    Change Category
-                  </Button>
-                </div>
+          </div>
+        )}
 
-                <div className="grid gap-4">
-                  <div className="grid gap-2">
-                    <Label htmlFor="businessName">Business Name *</Label>
-                    <Input
-                      id="businessName"
-                      name="businessName"
-                      placeholder="Your business name"
-                      value={businessInfo.businessName}
-                      onChange={handleInputChange}
-                      required
-                    />
+        {currentStep === 2 && (
+          <div className="space-y-6">
+            <h3 className="text-lg font-medium">Review & Finish</h3>
+            <div className="bg-muted p-6 rounded-lg">
+              <h4 className="font-semibold mb-4">Summary</h4>
+              <div className="grid gap-4 text-sm">
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="font-medium">Property Type:</div>
+                  <div className="capitalize">
+                    {propertyCategories.find(c => c.id === selectedCategory)?.label || selectedCategory}
                   </div>
                   
-                  <div className="grid gap-2">
-                    <Label htmlFor="contactPerson">Contact Person</Label>
-                    <Input
-                      id="contactPerson"
-                      name="contactPerson"
-                      placeholder="Full name"
-                      value={businessInfo.contactPerson}
-                      onChange={handleInputChange}
-                    />
-                  </div>
+                  <div className="font-medium">Account Name:</div>
+                  <div>{profile?.full_name || user?.email}</div>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="grid gap-2">
-                      <Label htmlFor="phone">Phone Number *</Label>
-                      <Input
-                        id="phone"
-                        name="phone"
-                        placeholder="Your phone number"
-                        value={businessInfo.phone}
-                        onChange={handleInputChange}
-                        required
-                      />
-                    </div>
-                    
-                    <div className="grid gap-2">
-                      <Label htmlFor="email">Email *</Label>
-                      <Input
-                        id="email"
-                        name="email"
-                        type="email"
-                        placeholder="Your email address"
-                        value={businessInfo.email}
-                        onChange={handleInputChange}
-                        required
-                      />
-                    </div>
-                  </div>
+                  <div className="font-medium">Email:</div>
+                  <div>{user?.email}</div>
                   
-                  <div className="grid gap-2">
-                    <Label htmlFor="address">Business Address</Label>
-                    <Textarea
-                      id="address"
-                      name="address"
-                      placeholder="Your business address"
-                      value={businessInfo.address}
-                      onChange={handleInputChange}
-                      rows={3}
-                    />
-                  </div>
+                  <div className="font-medium">Phone:</div>
+                  <div>{profile?.phone || 'Not provided'}</div>
+                </div>
+                
+                <div className="mt-4 pt-4 border-t">
+                  <h5 className="font-medium mb-2">Next Steps:</h5>
+                  <ul className="list-disc list-inside space-y-1 text-muted-foreground">
+                    <li>Complete your merchant profile in settings</li>
+                    <li>Add your first property listing</li>
+                    <li>Set up rooms and facilities</li>
+                    <li>Start accepting bookings</li>
+                  </ul>
                 </div>
               </div>
-              
-              <div className="flex justify-between items-center pt-4">
-                <Dialog>
-                  <DialogTrigger asChild>
-                    <Button type="button" variant="outline">What happens next?</Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Next Steps</DialogTitle>
-                      <DialogDescription>
-                        Here's what happens after you submit your merchant application
-                      </DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-4 py-4">
-                      <div className="flex gap-3">
-                        <div className="bg-primary/10 text-primary h-8 w-8 rounded-full flex items-center justify-center shrink-0">1</div>
-                        <div>
-                          <h4 className="font-medium">Application Review</h4>
-                          <p className="text-sm text-muted-foreground">Our team will review your application</p>
-                        </div>
-                      </div>
-                      <div className="flex gap-3">
-                        <div className="bg-primary/10 text-primary h-8 w-8 rounded-full flex items-center justify-center shrink-0">2</div>
-                        <div>
-                          <h4 className="font-medium">Dashboard Access</h4>
-                          <p className="text-sm text-muted-foreground">You'll get immediate access to your merchant dashboard</p>
-                        </div>
-                      </div>
-                      <div className="flex gap-3">
-                        <div className="bg-primary/10 text-primary h-8 w-8 rounded-full flex items-center justify-center shrink-0">3</div>
-                        <div>
-                          <h4 className="font-medium">Add Properties</h4>
-                          <p className="text-sm text-muted-foreground">Start adding your properties and rooms</p>
-                        </div>
-                      </div>
-                      <div className="flex gap-3">
-                        <div className="bg-primary/10 text-primary h-8 w-8 rounded-full flex items-center justify-center shrink-0">4</div>
-                        <div>
-                          <h4 className="font-medium">Go Live</h4>
-                          <p className="text-sm text-muted-foreground">Once verified, your properties will be visible to users</p>
-                        </div>
-                      </div>
-                    </div>
-                    <DialogFooter>
-                      <Button type="button" variant="secondary" onClick={() => document.body.click()}>Close</Button>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
-                
-                <Button type="submit" disabled={loading}>
-                  {loading ? "Processing..." : "Submit Application"}
-                </Button>
-              </div>
-            </form>
+            </div>
+            
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-blue-800">
+              <p className="text-sm">
+                By completing this setup, you agree to our terms of service for listing properties and services on our platform.
+              </p>
+            </div>
+          </div>
+        )}
+
+        <div className="flex justify-between mt-8">
+          {currentStep > 0 ? (
+            <Button variant="outline" onClick={handlePrevStep} disabled={isLoading}>
+              Back
+            </Button>
+          ) : (
+            <Button variant="outline" onClick={() => navigate('/')} disabled={isLoading}>
+              Cancel
+            </Button>
           )}
-        </CardContent>
-      </Card>
-    </div>
+          
+          {currentStep < 2 ? (
+            <Button onClick={handleNextStep} disabled={isLoading || (currentStep === 0 && !selectedCategory)}>
+              Next
+            </Button>
+          ) : (
+            <Button onClick={handleFinish} disabled={isLoading}>
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                'Complete Setup'
+              )}
+            </Button>
+          )}
+        </div>
+      </CardContent>
+    </Card>
   );
 };
 

@@ -21,7 +21,20 @@ import Properties from "./pages/Properties";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import BookingConfirmation from "./pages/bookings/BookingConfirmation";
 
-const queryClient = new QueryClient();
+// Configure the Query Client with default settings
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,
+      retry: 1,
+      staleTime: 30000,
+    },
+  },
+});
+
+// Admin credentials for reference:
+// Email: bnoy.in.co@gmail.com
+// Password: Bnoy@2900
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
