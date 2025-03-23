@@ -1,88 +1,90 @@
 
-// Auth types
-export type UserRole = 'student' | 'merchant' | 'admin';
-export type GenderOption = 'boys' | 'girls' | 'common';
-export type BookingStatus = 'pending' | 'confirmed' | 'cancelled' | 'completed' | 'processing' | 'refunded';
-export type TimeFrame = 'daily' | 'monthly';
-export type PropertyCategory = 'pg' | 'hostel' | 'dormitory' | 'independent_room' | 'hotel' | 'library' | 'coaching' | 'tiffin_delivery';
+// User role definition
+export type UserRole = 'admin' | 'merchant' | 'student';
 
+// Gender options
+export type GenderOption = 'boys' | 'girls' | 'common';
+
+// Property categories
+export type PropertyCategory = 
+  | 'pg' 
+  | 'hostel' 
+  | 'dormitory' 
+  | 'independent_room' 
+  | 'hotel' 
+  | 'library' 
+  | 'coaching' 
+  | 'tiffin_delivery';
+
+// Property type
+export type PropertyType = 'residential' | 'commercial';
+
+// Time frame options
+export type TimeFrame = 'daily' | 'monthly';
+
+// Booking status
+export type BookingStatus = 'pending' | 'confirmed' | 'cancelled' | 'completed' | 'processing' | 'refunded';
+
+// User profile interface
 export interface UserProfile {
   id: string;
-  full_name: string | null;
+  email?: string;
+  full_name?: string;
+  avatar_url?: string;
+  phone?: string;
   role: UserRole;
-  phone: string | null;
-  email: string | null;
-  avatar_url: string | null;
+  is_verified?: boolean;
+  stripe_customer_id?: string;
   created_at: string;
   updated_at: string;
-  gender?: GenderOption | string;
-  preferred_gender_accommodation?: GenderOption | string;
+  preferred_gender_accommodation?: GenderOption;
   preferred_location?: string;
   preferred_property_type?: string;
   max_budget?: number;
   notifications_enabled?: boolean;
 }
 
-export interface Merchant {
-  id: string;
-  business_name: string;
-  contact_person: string | null;
-  phone: string;
-  email: string;
-  address: string | null;
-  is_verified: boolean;
-  created_at: string;
-  updated_at: string;
-}
-
+// Location interface
 export interface Location {
   id: string;
   name: string;
-  latitude: number | null;
-  longitude: number | null;
-  created_at: string;
-  city?: string;
-  state?: string;
-  country?: string;
-  zip_code?: string;
-}
-
-export interface Facility {
-  id: string;
-  name: string;
+  latitude: number;
+  longitude: number;
   created_at: string;
 }
 
+// Property interface
 export interface Property {
   id: string;
   merchant_id: string;
   name: string;
-  type: string;
-  gender: GenderOption;
-  description: string | null;
-  location_id: string | null;
+  description: string;
+  type: PropertyType;
+  category: PropertyCategory;
   address: string;
-  latitude: number | null;
-  longitude: number | null;
-  daily_price: number | null;
+  gender: GenderOption;
   monthly_price: number;
+  daily_price?: number;
   is_verified: boolean;
+  is_featured: boolean;
+  capacity: number;
+  rating?: number;
+  review_count?: number;
   created_at: string;
   updated_at: string;
-  category: PropertyCategory;
-  location?: Location;
-  facilities?: Facility[];
-  images?: PropertyImage[];
-  reviews?: Review[];
-  average_rating?: number;
+  location: Location | null;
+  images: PropertyImage[];
+  facilities: Facility[];
+  rooms: Room[];
   available_rooms?: number;
   total_rooms?: number;
-  amenities_summary?: string;
-  distance_to_center?: number;
-  popular_landmarks?: string[];
-  rooms?: Room[];
+  security_deposit?: number;
+  electricity_included?: boolean;
+  cleaning_included?: boolean;
+  food_included?: boolean;
 }
 
+// Room interface
 export interface Room {
   id: string;
   property_id: string;
@@ -95,9 +97,15 @@ export interface Room {
   is_available: boolean;
   created_at: string;
   updated_at: string;
+  security_deposit?: number;
+  electricity_included?: boolean;
+  cleaning_included?: boolean;
+  food_included?: boolean;
+  facilities?: string[];
   images?: RoomImage[];
 }
 
+// Room Image interface
 export interface RoomImage {
   id: string;
   room_id: string;
@@ -106,6 +114,7 @@ export interface RoomImage {
   created_at: string;
 }
 
+// Property image interface
 export interface PropertyImage {
   id: string;
   property_id: string;
@@ -114,13 +123,54 @@ export interface PropertyImage {
   created_at: string;
 }
 
-export interface PropertyFacility {
+// Facility interface
+export interface Facility {
   id: string;
-  property_id: string;
-  facility_id: string;
+  name: string;
+  icon?: string;
   created_at: string;
 }
 
+// Booking interface
+export interface Booking {
+  id: string;
+  user_id: string;
+  property_id: string;
+  room_id?: string;
+  check_in_date: string;
+  check_out_date: string;
+  check_in_time?: string;
+  check_out_time?: string;
+  time_frame: TimeFrame;
+  price_per_unit: number;
+  total_amount: number;
+  status: BookingStatus;
+  payment_status?: string;
+  payment_id?: string;
+  special_requests?: string;
+  number_of_guests?: number;
+  cancellation_reason?: string;
+  refund_amount?: number;
+  created_at: string;
+  updated_at: string;
+  property?: Property;
+}
+
+// Review interface
+export interface Review {
+  id: string;
+  property_id: string;
+  user_id: string;
+  booking_id?: string;
+  rating: number;
+  comment: string;
+  is_anonymous: boolean;
+  created_at: string;
+  updated_at: string;
+  user?: UserProfile;
+}
+
+// Favorite properties interface
 export interface Favorite {
   id: string;
   user_id: string;
@@ -129,92 +179,11 @@ export interface Favorite {
   property?: Property;
 }
 
-export interface Review {
+// System settings interface
+export interface SystemSetting {
   id: string;
-  property_id: string;
-  user_id: string;
-  rating: number;
-  cleanliness_rating?: number;
-  location_rating?: number;
-  value_rating?: number;
-  service_rating?: number;
-  comment: string | null;
-  created_at: string;
-  updated_at: string;
-  user?: UserProfile;
-  helpful_count?: number;
-  reported?: boolean;
-  admin_approved?: boolean;
-  images?: string[];
-  response?: ReviewResponse;
-}
-
-export interface ReviewResponse {
-  id: string;
-  review_id: string;
-  merchant_id: string;
-  comment: string;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface Booking {
-  id: string;
-  property_id: string;
-  user_id: string;
-  check_in_date: string;
-  check_out_date: string | null;
-  time_frame: TimeFrame;
-  price_per_unit: number;
-  total_amount: number;
-  status: BookingStatus;
-  created_at: string;
-  updated_at: string;
-  property?: Property | null;
-  user?: UserProfile | null;
-  payment_id?: string;
-  payment_status?: 'pending' | 'completed' | 'failed' | 'refunded';
-  check_in_time?: string;
-  check_out_time?: string;
-  special_requests?: string;
-  number_of_guests?: number;
-  cancellation_reason?: string;
-  refund_amount?: number;
-  room_id?: string;
-  room?: Room;
-}
-
-export interface SearchResult {
-  properties: Property[];
-  total: number;
-  page: number;
-  limit: number;
-  filters_applied: SearchFilters;
-}
-
-export interface SearchFilters {
-  location?: string;
-  price_min?: number;
-  price_max?: number;
-  gender?: GenderOption;
-  property_type?: string[];
-  property_category?: PropertyCategory[];
-  facilities?: string[];
-  rating?: number;
-  sort_by?: 'price_low' | 'price_high' | 'rating' | 'newest';
-  distance?: number;
-  near_institution?: string;
-  capacity?: number;
-}
-
-export interface Payment {
-  id: string;
-  booking_id: string;
-  amount: number;
-  currency: string;
-  payment_method: string;
-  status: string;
-  transaction_id?: string;
+  key: string;
+  value: string;
   created_at: string;
   updated_at: string;
 }
