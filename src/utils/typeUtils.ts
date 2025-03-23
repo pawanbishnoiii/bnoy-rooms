@@ -7,32 +7,32 @@ import { Property, Booking, Favorite, Room, PropertyImage, Facility, Location, U
  * @returns Property object that conforms to our interface
  */
 export function mapDbPropertyToProperty(dbProperty: any): Property {
-  return {
+  // Start with default values for required fields
+  const property: Property = {
     id: dbProperty.id,
     merchant_id: dbProperty.merchant_id,
-    name: dbProperty.name,
+    name: dbProperty.name || '',
     description: dbProperty.description || '',
-    type: dbProperty.type,
-    category: dbProperty.category,
-    address: dbProperty.address,
-    gender: dbProperty.gender,
-    monthly_price: dbProperty.monthly_price,
-    daily_price: dbProperty.daily_price,
+    type: dbProperty.type || 'residential',
+    category: dbProperty.category || 'pg',
+    address: dbProperty.address || '',
+    gender: dbProperty.gender || 'common',
+    monthly_price: dbProperty.monthly_price || 0,
+    daily_price: dbProperty.daily_price || null,
     is_verified: dbProperty.is_verified || false,
     is_featured: dbProperty.is_featured || false,
     capacity: dbProperty.capacity || 0,
-    rating: dbProperty.rating,
-    review_count: dbProperty.review_count,
+    rating: dbProperty.rating || 0,
+    review_count: dbProperty.review_count || 0,
     created_at: dbProperty.created_at,
     updated_at: dbProperty.updated_at,
-    // Handle nested objects
-    location: dbProperty.location as Location,
-    latitude: dbProperty.latitude,
-    longitude: dbProperty.longitude,
-    // Handle arrays
-    images: (dbProperty.images || []) as PropertyImage[],
-    facilities: (dbProperty.facilities || []) as Facility[],
-    rooms: (dbProperty.rooms || []) as Room[],
+    // Handle nested objects with safe defaults
+    location: dbProperty.location || null,
+    images: Array.isArray(dbProperty.images) ? dbProperty.images : [],
+    facilities: Array.isArray(dbProperty.facilities) ? dbProperty.facilities : [],
+    rooms: Array.isArray(dbProperty.rooms) ? dbProperty.rooms : [],
+    latitude: dbProperty.latitude || (dbProperty.location?.latitude) || 0,
+    longitude: dbProperty.longitude || (dbProperty.location?.longitude) || 0,
     // Optional fields
     available_rooms: dbProperty.available_rooms,
     total_rooms: dbProperty.total_rooms,
@@ -44,6 +44,8 @@ export function mapDbPropertyToProperty(dbProperty: any): Property {
     matchScore: dbProperty.matchScore,
     ai_strengths: dbProperty.ai_strengths,
   };
+
+  return property;
 }
 
 /**
@@ -73,9 +75,9 @@ export function mapDbBookingToBooking(dbBooking: any): Booking {
     refund_amount: dbBooking.refund_amount,
     created_at: dbBooking.created_at,
     updated_at: dbBooking.updated_at,
-    // Handle nested objects if they exist
+    // Handle nested objects safely
     property: dbBooking.property ? mapDbPropertyToProperty(dbBooking.property) : undefined,
-    user: dbBooking.user as UserProfile,
+    user: dbBooking.user || undefined,
   };
 }
 
@@ -93,4 +95,13 @@ export function mapDbFavoriteToFavorite(dbFavorite: any): Favorite {
     // Handle nested property if it exists
     property: dbFavorite.property ? mapDbPropertyToProperty(dbFavorite.property) : undefined,
   };
+}
+
+/**
+ * A utility function to safely cast database objects to our interfaces
+ * This is useful when working with data from Supabase that doesn't match our types exactly
+ */
+export function safelyMapData<T>(data: any, mapper: (item: any) => T): T[] {
+  if (!Array.isArray(data)) return [];
+  return data.map(mapper);
 }

@@ -9,18 +9,17 @@ import { SystemSetting } from "@/types";
  */
 export async function getSystemSetting(key: string): Promise<string | undefined> {
   try {
+    // Using a raw query since the system_settings table isn't 
+    // recognized in the generated types yet
     const { data, error } = await supabase
-      .from('system_settings')
-      .select('value')
-      .eq('key', key)
-      .single();
+      .rpc('get_setting', { setting_key: key });
 
     if (error) {
       console.error('Error fetching system setting:', error);
       return undefined;
     }
 
-    return data?.value;
+    return data;
   } catch (error) {
     console.error('Error in getSystemSetting:', error);
     return undefined;
@@ -35,12 +34,13 @@ export async function getSystemSetting(key: string): Promise<string | undefined>
  */
 export async function setSystemSetting(key: string, value: string): Promise<boolean> {
   try {
+    // Using a raw query since the system_settings table isn't 
+    // recognized in the generated types yet
     const { error } = await supabase
-      .from('system_settings')
-      .upsert(
-        { key, value, updated_at: new Date().toISOString() },
-        { onConflict: 'key' }
-      );
+      .rpc('set_setting', { 
+        setting_key: key,
+        setting_value: value
+      });
 
     if (error) {
       console.error('Error setting system setting:', error);
