@@ -147,24 +147,34 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signIn = async (email: string, password: string) => {
     try {
       setIsLoading(true);
+      console.log('Attempting to sign in with:', email);
+      
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password
       });
 
       if (error) {
+        console.error('Authentication error:', error.message);
         throw error;
       }
 
-      toast({
-        title: 'Welcome back!',
-        description: 'You have successfully signed in'
-      });
+      if (data.user) {
+        console.log('Sign-in successful for user:', data.user.email);
+        
+        // Fetch user profile immediately to determine role
+        await fetchUserProfile(data.user.id);
+
+        toast({
+          title: 'Welcome back!',
+          description: 'You have successfully signed in'
+        });
+      }
     } catch (error: any) {
       console.error('Error signing in:', error);
       toast({
         title: 'Sign-in failed',
-        description: error.message || 'Invalid email or password',
+        description: error.message || 'Invalid email or password. Please try again.',
         variant: 'destructive'
       });
       throw error;

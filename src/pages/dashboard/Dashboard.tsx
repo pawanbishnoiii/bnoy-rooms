@@ -35,24 +35,29 @@ const Dashboard = () => {
   // Redirect to the appropriate dashboard section based on user role
   useEffect(() => {
     if (user && profile) {
+      console.log('Dashboard effect - User role:', userRole);
+      
       // If user is at /dashboard with no further path
       if (location.pathname === '/dashboard') {
         switch (userRole) {
           case 'admin':
-            navigate('/dashboard/overview');
+            navigate('/dashboard/overview', { replace: true });
             break;
           case 'merchant':
-            navigate('/dashboard/properties');
+            navigate('/dashboard/properties', { replace: true });
             break;
           case 'student':
-            navigate('/dashboard/bookings');
+            navigate('/dashboard/bookings', { replace: true });
             break;
           default:
-            navigate('/dashboard/bookings');
+            navigate('/dashboard/bookings', { replace: true });
         }
       }
     }
   }, [user, profile, location.pathname, navigate, userRole]);
+
+  // Debug output
+  console.log('Dashboard rendering - User role:', userRole);
 
   return (
     <DashboardLayout>
