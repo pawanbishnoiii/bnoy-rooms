@@ -1,11 +1,13 @@
 
 import React, { useEffect, useState } from 'react';
-import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
+import { Routes, Route, useNavigate, useLocation, Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import AdminPanel from '@/components/admin/AdminPanel';
 import StudentPanel from '@/components/student/StudentPanel';
 import MerchantPanel from '@/components/merchant/MerchantPanel';
+import StudentDashboard from '@/pages/dashboard/StudentDashboard';
+import MerchantDashboard from '@/pages/dashboard/MerchantDashboard';
 import BookingsList from '@/components/bookings/BookingsList';
 import FavoritesList from '@/components/properties/FavoritesList';
 import PropertiesList from '@/components/properties/PropertiesList';
@@ -49,21 +51,26 @@ const Dashboard = () => {
         
         switch (userRole) {
           case 'admin':
-            navigate('/dashboard/overview', { replace: true });
+            navigate('/admin/dashboard', { replace: true });
             break;
           case 'merchant':
-            console.log('Merchant user - redirecting to /dashboard/properties');
-            navigate('/dashboard/properties', { replace: true });
+            console.log('Merchant user - redirecting to /merchant/dashboard');
+            navigate('/merchant/dashboard', { replace: true });
             break;
           case 'student':
-            navigate('/dashboard/bookings', { replace: true });
+            navigate('/student/dashboard', { replace: true });
             break;
           default:
-            navigate('/dashboard/bookings', { replace: true });
+            navigate('/student/dashboard', { replace: true });
         }
       }
     }
   }, [user, profile, location.pathname, navigate, userRole]);
+
+  // If no user is logged in, redirect to login
+  if (!user) {
+    return <Navigate to="/auth/login" replace />;
+  }
 
   return (
     <DashboardLayout>
@@ -85,6 +92,7 @@ const Dashboard = () => {
         {userRole === 'merchant' && (
           <>
             <Route path="overview" element={<MerchantPanel />} />
+            <Route path="/merchant/dashboard" element={<MerchantDashboard />} />
             <Route path="properties" element={<MerchantPropertiesList onSelectProperty={handlePropertySelect} />} />
             <Route path="properties/new" element={<PropertyForm />} />
             <Route path="properties/:propertyId/edit" element={<PropertyForm />} />
@@ -100,6 +108,7 @@ const Dashboard = () => {
         {userRole === 'student' && (
           <>
             <Route path="overview" element={<StudentPanel />} />
+            <Route path="/student/dashboard" element={<StudentDashboard />} />
             <Route path="bookings" element={<BookingsList />} />
             <Route path="favorites" element={<FavoritesList />} />
             <Route path="reviews" element={<ReviewsList />} />

@@ -1,4 +1,3 @@
-
 import { Property, PropertyWithScore, PropertyCategory, GenderOption } from "@/types";
 
 /**
@@ -135,3 +134,309 @@ export async function getAIRecommendations(
     }
   ];
 }
+
+export const listRegionProperties = (region?: string): PropertyWithScore[] => {
+  const currentTime = new Date().toISOString();
+  
+  return [
+    {
+      id: "prop1",
+      merchant_id: "merchant1",
+      name: "Sunny PG in Delhi University North Campus",
+      description: "Spacious and well-ventilated PG accommodations near Delhi University North Campus with all modern amenities and facilities.",
+      type: "residential",
+      category: "pg",
+      address: "Vijay Nagar, Delhi University North Campus, Delhi",
+      gender: "boys",
+      monthly_price: 8000,
+      daily_price: null,
+      is_verified: true,
+      is_featured: true,
+      capacity: 50,
+      created_at: "2024-01-15T10:30:00Z",
+      updated_at: "2024-03-10T14:45:00Z",
+      location: {
+        id: "loc1",
+        name: "Delhi University North Campus",
+        latitude: 28.6875,
+        longitude: 77.2034,
+        created_at: "2024-01-01T00:00:00Z"
+      },
+      images: [],
+      facilities: [],
+      rooms: [],
+      available_rooms: 10,
+      total_rooms: 25,
+      matchScore: 0.95,
+      ai_strengths: ["Close to campus", "Well-maintained", "Good security"]
+    },
+    {
+      id: "prop2",
+      merchant_id: "merchant2",
+      name: "Comfort Hostel in Mumbai",
+      description: "A comfortable hostel for students near Mumbai University.",
+      type: "residential",
+      category: "hostel",
+      address: "456 Park Avenue, Mumbai",
+      gender: "boys",
+      monthly_price: 6000,
+      daily_price: null,
+      is_verified: true,
+      is_featured: false,
+      capacity: 20,
+      created_at: "2024-02-10T12:00:00Z",
+      updated_at: "2024-04-05T16:30:00Z",
+      location: {
+        id: "loc2",
+        name: "Mumbai University",
+        latitude: 18.9667,
+        longitude: 72.8333,
+        created_at: "2024-02-01T00:00:00Z"
+      },
+      images: [],
+      facilities: [
+        { id: "fac-1", name: "Meals", created_at: "2024-02-01T00:00:00Z" },
+        { id: "fac-2", name: "Laundry", created_at: "2024-02-01T00:00:00Z" }
+      ],
+      rooms: [],
+      matchScore: 0.85,
+      ai_strengths: ["Good price match", "Near campus"]
+    },
+    {
+      id: "prop3",
+      merchant_id: "merchant3",
+      name: "Student Haven in Bangalore",
+      description: "A comfortable dormitory for students near Bangalore University.",
+      type: "residential",
+      category: "dormitory",
+      address: "789 College Road, Bangalore",
+      gender: "girls",
+      monthly_price: 7500,
+      daily_price: null,
+      is_verified: true,
+      is_featured: false,
+      capacity: 30,
+      created_at: "2024-03-05T14:00:00Z",
+      updated_at: "2024-05-10T18:45:00Z",
+      location: {
+        id: "loc3",
+        name: "Bangalore University",
+        latitude: 13.0827,
+        longitude: 77.5851,
+        created_at: "2024-03-01T00:00:00Z"
+      },
+      images: [],
+      facilities: [
+        { id: "fac-3", name: "WiFi", created_at: "2024-03-01T00:00:00Z" },
+        { id: "fac-4", name: "Gym", created_at: "2024-03-01T00:00:00Z" }
+      ],
+      rooms: [],
+      matchScore: 0.75,
+      ai_strengths: ["Good amenities", "Near university"]
+    }
+  ];
+};
+
+export const getPropertyRecommendations = (userId: string): PropertyWithScore[] => {
+  const currentTime = new Date().toISOString();
+  
+  return [
+    {
+      id: "prop1",
+      merchant_id: "merchant1",
+      name: "Sunny PG in Delhi University North Campus",
+      description: "Spacious and well-ventilated PG accommodations near Delhi University North Campus with all modern amenities and facilities.",
+      type: "residential",
+      category: "pg",
+      address: "Vijay Nagar, Delhi University North Campus, Delhi",
+      gender: "boys",
+      monthly_price: 8000,
+      daily_price: null,
+      is_verified: true,
+      is_featured: true,
+      capacity: 50,
+      created_at: "2024-01-15T10:30:00Z",
+      updated_at: "2024-03-10T14:45:00Z",
+      location: {
+        id: "loc1",
+        name: "Delhi University North Campus",
+        latitude: 28.6875,
+        longitude: 77.2034,
+        created_at: "2024-01-01T00:00:00Z"
+      },
+      images: [],
+      facilities: [],
+      rooms: [],
+      available_rooms: 10,
+      total_rooms: 25,
+      matchScore: 0.92,
+      ai_strengths: ["Matches your budget", "Near your preferred location", "Gender-specific accommodation"]
+    },
+    {
+      id: "prop2",
+      merchant_id: "merchant2",
+      name: "Comfort Hostel in Mumbai",
+      description: "A comfortable hostel for students near Mumbai University.",
+      type: "residential",
+      category: "hostel",
+      address: "456 Park Avenue, Mumbai",
+      gender: "boys",
+      monthly_price: 6000,
+      daily_price: null,
+      is_verified: true,
+      is_featured: false,
+      capacity: 20,
+      created_at: "2024-02-10T12:00:00Z",
+      updated_at: "2024-04-05T16:30:00Z",
+      location: {
+        id: "loc2",
+        name: "Mumbai University",
+        latitude: 18.9667,
+        longitude: 72.8333,
+        created_at: "2024-02-01T00:00:00Z"
+      },
+      images: [],
+      facilities: [
+        { id: "fac-1", name: "Meals", created_at: "2024-02-01T00:00:00Z" },
+        { id: "fac-2", name: "Laundry", created_at: "2024-02-01T00:00:00Z" }
+      ],
+      rooms: [],
+      matchScore: 0.85,
+      ai_strengths: ["Good price match", "Near campus"]
+    },
+    {
+      id: "prop3",
+      merchant_id: "merchant3",
+      name: "Student Haven in Bangalore",
+      description: "A comfortable dormitory for students near Bangalore University.",
+      type: "residential",
+      category: "dormitory",
+      address: "789 College Road, Bangalore",
+      gender: "girls",
+      monthly_price: 7500,
+      daily_price: null,
+      is_verified: true,
+      is_featured: false,
+      capacity: 30,
+      created_at: "2024-03-05T14:00:00Z",
+      updated_at: "2024-05-10T18:45:00Z",
+      location: {
+        id: "loc3",
+        name: "Bangalore University",
+        latitude: 13.0827,
+        longitude: 77.5851,
+        created_at: "2024-03-01T00:00:00Z"
+      },
+      images: [],
+      facilities: [
+        { id: "fac-3", name: "WiFi", created_at: "2024-03-01T00:00:00Z" },
+        { id: "fac-4", name: "Gym", created_at: "2024-03-01T00:00:00Z" }
+      ],
+      rooms: [],
+      matchScore: 0.75,
+      ai_strengths: ["Good amenities", "Near university"]
+    }
+  ];
+};
+
+export const simulatePropertySearchResults = (query: string): PropertyWithScore[] => {
+  const currentTime = new Date().toISOString();
+  
+  return [
+    {
+      id: "prop1",
+      merchant_id: "merchant1",
+      name: "Sunny PG in Delhi University North Campus",
+      description: "Spacious and well-ventilated PG accommodations near Delhi University North Campus with all modern amenities and facilities.",
+      type: "residential",
+      category: "pg",
+      address: "Vijay Nagar, Delhi University North Campus, Delhi",
+      gender: "boys",
+      monthly_price: 8000,
+      daily_price: null,
+      is_verified: true,
+      is_featured: true,
+      capacity: 50,
+      created_at: "2024-01-15T10:30:00Z",
+      updated_at: "2024-03-10T14:45:00Z",
+      location: {
+        id: "loc1",
+        name: "Delhi University North Campus",
+        latitude: 28.6875,
+        longitude: 77.2034,
+        created_at: "2024-01-01T00:00:00Z"
+      },
+      images: [],
+      facilities: [],
+      rooms: [],
+      available_rooms: 10,
+      total_rooms: 25,
+      matchScore: 0.89,
+      ai_strengths: ["Matches search query", "Good reviews", "Value for money"]
+    },
+    {
+      id: "prop2",
+      merchant_id: "merchant2",
+      name: "Comfort Hostel in Mumbai",
+      description: "A comfortable hostel for students near Mumbai University.",
+      type: "residential",
+      category: "hostel",
+      address: "456 Park Avenue, Mumbai",
+      gender: "boys",
+      monthly_price: 6000,
+      daily_price: null,
+      is_verified: true,
+      is_featured: false,
+      capacity: 20,
+      created_at: "2024-02-10T12:00:00Z",
+      updated_at: "2024-04-05T16:30:00Z",
+      location: {
+        id: "loc2",
+        name: "Mumbai University",
+        latitude: 18.9667,
+        longitude: 72.8333,
+        created_at: "2024-02-01T00:00:00Z"
+      },
+      images: [],
+      facilities: [
+        { id: "fac-1", name: "Meals", created_at: "2024-02-01T00:00:00Z" },
+        { id: "fac-2", name: "Laundry", created_at: "2024-02-01T00:00:00Z" }
+      ],
+      rooms: [],
+      matchScore: 0.85,
+      ai_strengths: ["Good price match", "Near campus"]
+    },
+    {
+      id: "prop3",
+      merchant_id: "merchant3",
+      name: "Student Haven in Bangalore",
+      description: "A comfortable dormitory for students near Bangalore University.",
+      type: "residential",
+      category: "dormitory",
+      address: "789 College Road, Bangalore",
+      gender: "girls",
+      monthly_price: 7500,
+      daily_price: null,
+      is_verified: true,
+      is_featured: false,
+      capacity: 30,
+      created_at: "2024-03-05T14:00:00Z",
+      updated_at: "2024-05-10T18:45:00Z",
+      location: {
+        id: "loc3",
+        name: "Bangalore University",
+        latitude: 13.0827,
+        longitude: 77.5851,
+        created_at: "2024-03-01T00:00:00Z"
+      },
+      images: [],
+      facilities: [
+        { id: "fac-3", name: "WiFi", created_at: "2024-03-01T00:00:00Z" },
+        { id: "fac-4", name: "Gym", created_at: "2024-03-01T00:00:00Z" }
+      ],
+      rooms: [],
+      matchScore: 0.75,
+      ai_strengths: ["Good amenities", "Near university"]
+    }
+  ];
+};
