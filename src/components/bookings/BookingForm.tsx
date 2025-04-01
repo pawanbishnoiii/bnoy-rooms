@@ -1,9 +1,10 @@
 
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { Property, Room, TimeFrame, BookingStatus } from '@/types';
+import { Property, Room, TimeFrame } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
+import { Database } from '@/integrations/supabase/types';
 import { Calendar } from 'lucide-react';
 import { DateRange } from 'react-day-picker';
 import { format } from 'date-fns';
@@ -210,24 +211,29 @@ const BookingForm: React.FC<BookingFormProps> = ({ propertyId, price, timeFrame 
       return;
     }
 
-    const bookingData = {
-      property_id: propertyId,
-      room_id: selectedRoom.id,
-      user_id: user.id,
-      check_in_date: formData.checkInDate.toISOString().split('T')[0],
-      check_out_date: formData.checkOutDate.toISOString().split('T')[0],
-      check_in_time: formData.checkInTime || '14:00',
-      check_out_time: formData.checkOutTime || '12:00',
-      time_frame: formData.timeFrame,
-      price_per_unit: totalPrice / numberOfDays,
-      total_amount: totalPrice,
-      status: 'pending', // Use string literal instead of BookingStatus enum
-      number_of_guests: formData.guests,
-      special_requests: formData.specialRequests,
-      payment_status: 'pending'
-    };
-
     try {
+      // Define the booking data in a way that matches the database schema
+      const bookingData = {
+        property_id: propertyId,
+        room_id: selectedRoom.id,
+        user_id: user.id,
+        check_in_date: formData.checkInDate.toISOString().split('T')[0],
+        check_out_date: formData.checkOutDate.toISOString().split('T')[0],
+        time_frame: formData.timeFrame,
+        price_per_unit: totalPrice / numberOfDays,
+        total_amount: totalPrice,
+        status: 'pending' as Database['public']['Enums']['booking_status'],
+        number_of_guests: formData.guests,
+        special_requests: formData.specialRequests,
+      };
+
+      // Additional data to track but not in the insert
+      const additionalData = {
+        check_in_time: formData.checkInTime || '14:00',
+        check_out_time: formData.checkOutTime || '12:00',
+        payment_status: 'pending'
+      };
+
       const { data, error } = await supabase.from('bookings').insert(bookingData);
 
       if (error) {

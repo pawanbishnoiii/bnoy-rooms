@@ -1,140 +1,99 @@
 
-import { Property, Booking, Favorite, Room, PropertyImage, Facility, Location, UserProfile } from '@/types';
+import { Property, PropertyCategory, GenderOption, Booking, Favorite, Room, Review } from '@/types';
+import { Database } from '@/integrations/supabase/types';
+
+// Type for database property row
+export type SupabaseProperty = Database['public']['Tables']['properties']['Row'];
+export type SupabaseRoom = Database['public']['Tables']['rooms']['Row'];
+export type SupabaseBooking = Database['public']['Tables']['bookings']['Row'];
 
 /**
- * Safely maps database property objects to our Property interface
- * @param dbProperty The property object from the database
- * @returns Property object that conforms to our interface
+ * Maps a database property object to the frontend Property type
  */
 export function mapDbPropertyToProperty(dbProperty: any): Property {
-  // Start with default values for required fields
-  const property: Property = {
-    id: dbProperty.id,
-    merchant_id: dbProperty.merchant_id,
-    name: dbProperty.name || '',
-    description: dbProperty.description || '',
-    type: dbProperty.type || 'residential',
-    category: dbProperty.category || 'pg',
-    address: dbProperty.address || '',
-    gender: dbProperty.gender || 'common',
-    monthly_price: dbProperty.monthly_price || 0,
-    daily_price: dbProperty.daily_price || null,
-    is_verified: dbProperty.is_verified || false,
-    is_featured: dbProperty.is_featured || false,
-    capacity: dbProperty.capacity || 0,
-    rating: dbProperty.rating || 0,
-    review_count: dbProperty.review_count || 0,
-    created_at: dbProperty.created_at,
-    updated_at: dbProperty.updated_at,
-    // Handle nested objects with safe defaults
-    location: dbProperty.location ? {
-      id: dbProperty.location.id || '',
-      name: dbProperty.location.name || '',
-      latitude: dbProperty.location.latitude || 0,
-      longitude: dbProperty.location.longitude || 0,
-      created_at: dbProperty.location.created_at || '',
-    } : null,
-    images: Array.isArray(dbProperty.images) ? dbProperty.images.map((img: any) => ({
-      id: img.id || '',
-      property_id: img.property_id || dbProperty.id,
-      image_url: img.image_url || '',
-      is_primary: img.is_primary || false,
-      created_at: img.created_at || '',
-    })) : [],
-    facilities: Array.isArray(dbProperty.facilities) ? dbProperty.facilities.map((f: any) => {
-      const facility = f.facility || f;
-      return {
-        id: facility.id || '',
-        name: facility.name || '',
-        icon: facility.icon,
-        created_at: facility.created_at || '',
-      };
-    }) : [],
-    rooms: Array.isArray(dbProperty.rooms) ? dbProperty.rooms.map((room: any) => ({
-      id: room.id || '',
-      property_id: room.property_id || dbProperty.id,
-      room_number: room.room_number || '',
-      capacity: room.capacity || 1,
-      occupied_beds: room.occupied_beds || 0,
-      monthly_price: room.monthly_price || 0,
-      daily_price: room.daily_price || null,
-      description: room.description || null,
-      is_available: room.is_available !== false, 
-      created_at: room.created_at || '',
-      updated_at: room.updated_at || '',
-    })) : [],
-    // Optional fields
-    available_rooms: dbProperty.available_rooms,
-    total_rooms: dbProperty.total_rooms,
-    security_deposit: dbProperty.security_deposit,
-    electricity_included: dbProperty.electricity_included,
-    cleaning_included: dbProperty.cleaning_included,
-    food_included: dbProperty.food_included,
-    average_rating: dbProperty.average_rating,
-    matchScore: dbProperty.matchScore,
-    ai_strengths: dbProperty.ai_strengths,
-    // Include latitude/longitude directly on the property to simplify map rendering
-    latitude: dbProperty.latitude || (dbProperty.location?.latitude) || 0,
-    longitude: dbProperty.longitude || (dbProperty.location?.longitude) || 0,
+  // Default values for required fields that might be missing
+  const defaultValues = {
+    is_featured: false,
+    capacity: 0,
+    rooms: [],
+    facilities: [],
+    images: [],
+    location: null,
   };
 
-  return property;
+  return {
+    ...dbProperty,
+    ...defaultValues,
+    // Ensure properties match the expected types
+    is_featured: dbProperty.is_featured || false,
+    category: (dbProperty.category as PropertyCategory) || 'pg',
+    gender: dbProperty.gender as GenderOption,
+    // Add properties from type that might be missing in database object
+    // but are required by the Property type
+    location: dbProperty.location || null,
+    facilities: dbProperty.facilities || [],
+    images: dbProperty.images || [],
+    rooms: dbProperty.rooms || [],
+    capacity: dbProperty.capacity || 0
+  };
 }
 
 /**
- * Maps database booking objects to our Booking interface
- * @param dbBooking The booking object from the database
- * @returns Booking object that conforms to our interface
+ * Maps a database booking object to the frontend Booking type
  */
 export function mapDbBookingToBooking(dbBooking: any): Booking {
+  // Get property from dbBooking if it exists
+  let property = null;
+  if (dbBooking.property) {
+    property = mapDbPropertyToProperty(dbBooking.property);
+  }
+
   return {
-    id: dbBooking.id,
-    user_id: dbBooking.user_id,
-    property_id: dbBooking.property_id,
-    room_id: dbBooking.room_id,
-    check_in_date: dbBooking.check_in_date,
-    check_out_date: dbBooking.check_out_date,
-    check_in_time: dbBooking.check_in_time,
-    check_out_time: dbBooking.check_out_time,
-    time_frame: dbBooking.time_frame,
-    price_per_unit: dbBooking.price_per_unit,
-    total_amount: dbBooking.total_amount,
-    status: dbBooking.status,
-    payment_status: dbBooking.payment_status,
-    payment_id: dbBooking.payment_id,
-    special_requests: dbBooking.special_requests,
-    number_of_guests: dbBooking.number_of_guests,
-    cancellation_reason: dbBooking.cancellation_reason,
-    refund_amount: dbBooking.refund_amount,
-    created_at: dbBooking.created_at,
-    updated_at: dbBooking.updated_at,
-    // Handle nested objects safely
-    property: dbBooking.property ? mapDbPropertyToProperty(dbBooking.property) : undefined,
-    user: dbBooking.user || undefined,
-  };
+    ...dbBooking,
+    // Ensure the status is of the correct type
+    status: dbBooking.status || 'pending',
+    // Map the property if it exists
+    property: property,
+    // Set default values for optional fields
+    payment_status: dbBooking.payment_status || 'pending',
+    payment_id: dbBooking.payment_id || undefined,
+    number_of_guests: dbBooking.number_of_guests || 1,
+  } as Booking;
 }
 
 /**
- * Maps database favorite objects to our Favorite interface
- * @param dbFavorite The favorite object from the database
- * @returns Favorite object that conforms to our interface
+ * Maps a database favorite object to the frontend Favorite type
  */
 export function mapDbFavoriteToFavorite(dbFavorite: any): Favorite {
+  // Get property from dbFavorite if it exists
+  let property = null;
+  if (dbFavorite.property) {
+    property = mapDbPropertyToProperty(dbFavorite.property);
+  }
+
   return {
     id: dbFavorite.id,
     user_id: dbFavorite.user_id,
     property_id: dbFavorite.property_id,
     created_at: dbFavorite.created_at,
-    // Handle nested property if it exists
-    property: dbFavorite.property ? mapDbPropertyToProperty(dbFavorite.property) : undefined,
+    property: property
   };
 }
 
 /**
- * A utility function to safely cast database objects to our interfaces
- * This is useful when working with data from Supabase that doesn't match our types exactly
+ * Maps a database room object to the frontend Room type
  */
-export function safelyMapData<T>(data: any, mapper: (item: any) => T): T[] {
-  if (!Array.isArray(data)) return [];
-  return data.map(mapper);
+export function mapDbRoomToRoom(dbRoom: any): Room {
+  return {
+    ...dbRoom,
+    // Set default values for optional fields
+    is_available: dbRoom.is_available !== false, // Default to true if not explicitly false
+    occupied_beds: dbRoom.occupied_beds || 0,
+    security_deposit: dbRoom.security_deposit || 0,
+    electricity_included: dbRoom.electricity_included || false,
+    cleaning_included: dbRoom.cleaning_included || false,
+    food_included: dbRoom.food_included || false,
+    facilities: dbRoom.facilities || [],
+    images: dbRoom.images || []
+  };
 }

@@ -8,7 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
  */
 export async function getSystemSetting(key: string): Promise<string | undefined> {
   try {
-    // Use RPC call instead of direct table access
+    // Use RPC call to get the setting
     const { data, error } = await supabase
       .rpc('get_setting', { setting_key: key });
 
@@ -32,7 +32,7 @@ export async function getSystemSetting(key: string): Promise<string | undefined>
  */
 export async function setSystemSetting(key: string, value: string): Promise<boolean> {
   try {
-    // Use RPC call instead of direct table access
+    // Use RPC call to set the setting
     const { error } = await supabase
       .rpc('set_setting', {
         setting_key: key,
