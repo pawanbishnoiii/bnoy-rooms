@@ -78,6 +78,7 @@ const Dashboard = () => {
         {/* Admin Routes */}
         {userRole === 'admin' && (
           <>
+            <Route path="/admin/dashboard" element={<AdminPanel />} />
             <Route path="overview" element={<AdminPanel />} />
             <Route path="users" element={<UsersList />} />
             <Route path="properties" element={<PropertiesList />} />

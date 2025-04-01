@@ -58,11 +58,11 @@ const AuthButtons = () => {
     console.log("Navigating to dashboard for role:", userRole);
     
     if (userRole === 'student') {
-      navigate('/dashboard');
+      navigate('/student/dashboard');
     } else if (userRole === 'merchant') {
-      navigate('/dashboard/properties');
+      navigate('/merchant/dashboard');
     } else if (userRole === 'admin') {
-      navigate('/adminn');
+      navigate('/admin/dashboard');
     } else {
       navigate('/dashboard');
     }
@@ -106,11 +106,11 @@ const AuthButtons = () => {
         
         {userRole === 'student' && (
           <>
-            <DropdownMenuItem onClick={() => navigate('/dashboard/bookings')}>
+            <DropdownMenuItem onClick={() => navigate('/student/bookings')}>
               <BookMarked className="mr-2 h-4 w-4" />
               My Bookings
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => navigate('/dashboard/favorites')}>
+            <DropdownMenuItem onClick={() => navigate('/student/favorites')}>
               <Star className="mr-2 h-4 w-4" />
               Favorites
             </DropdownMenuItem>
@@ -118,7 +118,7 @@ const AuthButtons = () => {
         )}
         
         {userRole === 'merchant' && (
-          <DropdownMenuItem onClick={() => navigate('/dashboard/properties')}>
+          <DropdownMenuItem onClick={() => navigate('/merchant/properties')}>
             <Building className="mr-2 h-4 w-4" />
             My Properties
           </DropdownMenuItem>

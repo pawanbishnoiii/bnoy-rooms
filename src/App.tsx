@@ -31,7 +31,7 @@ const queryClient = new QueryClient({
 });
 
 // Admin credentials for reference:
-// Email: bnoy.in.co@gmail.com
+// Email: info@shineveda.in
 // Password: Bnoy@2900
 
 const App = () => (
@@ -59,6 +59,9 @@ const App = () => (
             <Route path="/forgot-password" element={<Navigate to="/auth/forgot-password" replace />} />
             <Route path="/reset-password" element={<Navigate to="/auth/reset-password" replace />} />
             
+            {/* Admin special route */}
+            <Route path="/admin" element={<Navigate to="/auth/login" replace />} />
+            
             {/* Unified Dashboard Route */}
             <Route 
               path="/dashboard/*" 
@@ -67,6 +70,34 @@ const App = () => (
                   <Dashboard />
                 </ProtectedRoute>
               } 
+            />
+            
+            {/* Role-specific Dashboard Routes */}
+            <Route
+              path="/admin/*"
+              element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <Dashboard />
+                </ProtectedRoute>
+              }
+            />
+            
+            <Route
+              path="/merchant/*"
+              element={
+                <ProtectedRoute allowedRoles={['merchant']}>
+                  <Dashboard />
+                </ProtectedRoute>
+              }
+            />
+            
+            <Route
+              path="/student/*"
+              element={
+                <ProtectedRoute allowedRoles={['student']}>
+                  <Dashboard />
+                </ProtectedRoute>
+              }
             />
             
             {/* Settings route */}
