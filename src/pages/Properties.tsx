@@ -34,12 +34,10 @@ const Properties = () => {
   const { toast } = useToast();
   const { user, profile } = useAuth();
 
-  // State variables
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [filterOptions, setFilterOptions] = useState<FilterOptions>({});
   const debouncedSearchTerm = useDebounce(searchQuery, 500);
 
-  // Extract filter values from URL
   useEffect(() => {
     const gender = searchParams.get('gender') as GenderOption | undefined;
     const propertyType = searchParams.get('propertyType') || undefined;
@@ -58,7 +56,6 @@ const Properties = () => {
     });
   }, [searchParams]);
 
-  // Update URL when filter options change
   useEffect(() => {
     const params = new URLSearchParams();
     if (filterOptions.gender) params.set('gender', filterOptions.gender);
@@ -71,7 +68,6 @@ const Properties = () => {
     setSearchParams(params);
   }, [filterOptions, setSearchParams]);
 
-  // Function to fetch properties with filters
   const fetchProperties = async (filters: FilterOptions) => {
     let query = supabase
       .from('properties')
@@ -119,10 +115,9 @@ const Properties = () => {
           description: 'Failed to load properties. Please try again.',
           variant: 'destructive',
         });
-        throw new Error(error);
+        throw new Error(error.message);
       }
       
-      // Map database properties to our frontend Property type
       const mappedProperties = properties.map(mapDbPropertyToProperty);
       
       return mappedProperties;
@@ -131,7 +126,6 @@ const Properties = () => {
 
   const { data: properties = [], isLoading, error } = propertiesQuery;
 
-  // Handlers for filter changes
   const handleGenderChange = (gender: GenderOption) => {
     setFilterOptions(prev => ({ ...prev, gender }));
   };
@@ -156,19 +150,17 @@ const Properties = () => {
     setFilterOptions(prev => ({ ...prev, capacity }));
   };
 
-  // Handle search query changes
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(e.target.value);
   };
 
-  // Replace the location_id check with location check
-const filteredProperties = searchQuery
-  ? properties.filter(p => 
-      p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-      p.address.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (p.location && p.location.name.toLowerCase().includes(searchQuery.toLowerCase()))
-    )
-  : properties;
+  const filteredProperties = searchQuery
+    ? properties.filter(p => 
+        p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+        p.address.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (p.location && p.location.name.toLowerCase().includes(searchQuery.toLowerCase()))
+      )
+    : properties;
 
   if (isLoading) {
     return <div>Loading properties...</div>;
@@ -183,7 +175,6 @@ const filteredProperties = searchQuery
       <div className="container mx-auto mt-8">
         <h1 className="text-2xl font-semibold mb-4">Find Your Perfect Accommodation</h1>
 
-        {/* Search Input */}
         <Input
           type="text"
           placeholder="Search by name, address, or location..."
@@ -193,11 +184,9 @@ const filteredProperties = searchQuery
         />
 
         <div className="flex">
-          {/* Filters Section */}
           <div className="w-1/4 p-4 border rounded">
             <h2 className="text-lg font-semibold mb-2">Filters</h2>
 
-            {/* Gender Filter */}
             <div className="mb-4">
               <Label className="block text-sm font-medium text-gray-700">Gender</Label>
               <Select value={filterOptions.gender} onValueChange={handleGenderChange}>
@@ -212,7 +201,6 @@ const filteredProperties = searchQuery
               </Select>
             </div>
 
-            {/* Property Type Filter */}
             <div className="mb-4">
               <Label className="block text-sm font-medium text-gray-700">Property Type</Label>
               <Select value={filterOptions.propertyType} onValueChange={handlePropertyTypeChange}>
@@ -226,7 +214,6 @@ const filteredProperties = searchQuery
               </Select>
             </div>
 
-            {/* Property Category Filter */}
             <div className="mb-4">
               <Label className="block text-sm font-medium text-gray-700">Category</Label>
               <Select value={filterOptions.propertyCategory} onValueChange={handlePropertyCategoryChange}>
@@ -246,7 +233,6 @@ const filteredProperties = searchQuery
               </Select>
             </div>
 
-            {/* Location Filter */}
             <div className="mb-4">
               <Label htmlFor="location" className="block text-sm font-medium text-gray-700">Location</Label>
               <Input
@@ -259,7 +245,6 @@ const filteredProperties = searchQuery
               />
             </div>
 
-            {/* Max Budget Filter */}
             <div className="mb-4">
               <Label htmlFor="maxBudget" className="block text-sm font-medium text-gray-700">Max Budget</Label>
               <Input
@@ -272,8 +257,7 @@ const filteredProperties = searchQuery
               />
             </div>
 
-             {/* Capacity Filter */}
-             <div className="mb-4">
+            <div className="mb-4">
               <Label htmlFor="capacity" className="block text-sm font-medium text-gray-700">Capacity</Label>
               <Input
                 type="number"
@@ -286,7 +270,6 @@ const filteredProperties = searchQuery
             </div>
           </div>
 
-          {/* Properties List Section */}
           <div className="w-3/4 p-4">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {filteredProperties.map(property => (

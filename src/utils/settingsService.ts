@@ -9,8 +9,9 @@ import { supabase } from "@/integrations/supabase/client";
 export async function getSystemSetting(key: string): Promise<string | undefined> {
   try {
     // Use RPC call to get the setting
-    const { data, error } = await supabase
-      .rpc('get_setting', { setting_key: key });
+    const { data, error } = await supabase.rpc('get_setting', { 
+      setting_key: key 
+    });
 
     if (error) {
       console.error('Error fetching system setting:', error);
@@ -33,11 +34,10 @@ export async function getSystemSetting(key: string): Promise<string | undefined>
 export async function setSystemSetting(key: string, value: string): Promise<boolean> {
   try {
     // Use RPC call to set the setting
-    const { error } = await supabase
-      .rpc('set_setting', {
-        setting_key: key,
-        setting_value: value
-      });
+    const { error } = await supabase.rpc('set_setting', {
+      setting_key: key,
+      setting_value: value
+    });
 
     if (error) {
       console.error('Error setting system setting:', error);
