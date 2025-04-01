@@ -3,7 +3,7 @@ import React from 'react';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import { Property } from '@/types';
 import 'leaflet/dist/leaflet.css';
-import { Icon } from 'leaflet';
+import { Icon, LatLngExpression } from 'leaflet';
 
 // Leaflet marker icon fix
 import markerIconUrl from 'leaflet/dist/images/marker-icon.png';
@@ -26,10 +26,10 @@ interface PropertyMapProps {
 
 const PropertyMap: React.FC<PropertyMapProps> = ({ property }) => {
   // Default coordinates if property has no location
-  const defaultPosition: [number, number] = [28.6139, 77.2090]; // Default to Delhi
+  const defaultPosition: LatLngExpression = [28.6139, 77.2090]; // Default to Delhi
   
   // Get coordinates from property
-  const position: [number, number] = property.location ? 
+  const position: LatLngExpression = property.location ? 
     [property.location.latitude, property.location.longitude] : 
     defaultPosition;
 

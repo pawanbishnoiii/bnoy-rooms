@@ -19,5 +19,5 @@ export function useDebounce<T>(value: T, delay: number): T {
   return debouncedValue;
 }
 
-// Add default export as well for backward compatibility
+// Export both default and named export for compatibility
 export default useDebounce;

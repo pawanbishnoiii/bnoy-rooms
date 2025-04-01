@@ -55,12 +55,16 @@ const AuthButtons = () => {
   };
 
   const navigateToDashboard = () => {
+    console.log("Navigating to dashboard for role:", userRole);
+    
     if (userRole === 'student') {
-      navigate('/student/dashboard');
+      navigate('/dashboard');
     } else if (userRole === 'merchant') {
-      navigate('/merchant/dashboard');
+      navigate('/dashboard/properties');
     } else if (userRole === 'admin') {
-      navigate('/admin/dashboard');
+      navigate('/adminn');
+    } else {
+      navigate('/dashboard');
     }
   };
 
@@ -90,6 +94,7 @@ const AuthButtons = () => {
           <div className="flex flex-col space-y-1">
             <p className="text-sm font-medium leading-none">{profile?.full_name || 'User'}</p>
             <p className="text-xs leading-none text-muted-foreground">{user.email}</p>
+            <p className="text-xs leading-none text-muted-foreground">Role: {userRole}</p>
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
@@ -101,11 +106,11 @@ const AuthButtons = () => {
         
         {userRole === 'student' && (
           <>
-            <DropdownMenuItem onClick={() => navigate('/student/bookings')}>
+            <DropdownMenuItem onClick={() => navigate('/dashboard/bookings')}>
               <BookMarked className="mr-2 h-4 w-4" />
               My Bookings
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => navigate('/student/favorites')}>
+            <DropdownMenuItem onClick={() => navigate('/dashboard/favorites')}>
               <Star className="mr-2 h-4 w-4" />
               Favorites
             </DropdownMenuItem>
@@ -113,7 +118,7 @@ const AuthButtons = () => {
         )}
         
         {userRole === 'merchant' && (
-          <DropdownMenuItem onClick={() => navigate('/merchant/properties')}>
+          <DropdownMenuItem onClick={() => navigate('/dashboard/properties')}>
             <Building className="mr-2 h-4 w-4" />
             My Properties
           </DropdownMenuItem>
