@@ -6,14 +6,15 @@ import 'leaflet/dist/leaflet.css';
 import { Icon } from 'leaflet';
 
 // Leaflet marker icon fix
-import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
-import markerIcon from 'leaflet/dist/images/marker-icon.png';
-import markerShadow from 'leaflet/dist/images/marker-shadow.png';
+import markerIconUrl from 'leaflet/dist/images/marker-icon.png';
+import markerIcon2xUrl from 'leaflet/dist/images/marker-icon-2x.png';
+import markerShadowUrl from 'leaflet/dist/images/marker-shadow.png';
 
 // Fix for default marker icon in Leaflet with React
 const defaultIcon = new Icon({
-  iconUrl: markerIcon.src || markerIcon,
-  shadowUrl: markerShadow.src || markerShadow,
+  iconUrl: markerIconUrl,
+  iconRetinaUrl: markerIcon2xUrl,
+  shadowUrl: markerShadowUrl,
   iconSize: [25, 41],
   iconAnchor: [12, 41],
   popupAnchor: [1, -34],
@@ -35,7 +36,7 @@ const PropertyMap: React.FC<PropertyMapProps> = ({ property }) => {
   return (
     <div style={{ height: "400px", width: "100%" }}>
       <MapContainer 
-        center={position as any} 
+        center={position} 
         zoom={15} 
         style={{ height: "100%", width: "100%" }}
         scrollWheelZoom={false}
@@ -43,12 +44,10 @@ const PropertyMap: React.FC<PropertyMapProps> = ({ property }) => {
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          // @ts-ignore - The type definitions for react-leaflet aren't correctly recognizing these props
         />
         <Marker 
           position={position} 
           icon={defaultIcon}
-          // @ts-ignore - The type definitions for react-leaflet aren't correctly recognizing these props
         >
           <Popup>
             <div>

@@ -24,6 +24,15 @@ export async function getSetting(key: string): Promise<string | null> {
 }
 
 /**
+ * Get a system setting value by key (alias for getSetting)
+ * @param key The setting key to retrieve
+ * @returns The setting value as a string, or null if not found
+ */
+export async function getSystemSetting(key: string): Promise<string | null> {
+  return getSetting(key);
+}
+
+/**
  * Set a system setting value
  * @param key The setting key
  * @param value The setting value
@@ -64,7 +73,7 @@ export async function getPropertyRoomCounts(propertyId: string): Promise<{ total
       return null;
     }
 
-    if (data && data.length > 0) {
+    if (data && Array.isArray(data) && data.length > 0) {
       return {
         total_rooms: data[0].total_rooms,
         available_rooms: data[0].available_rooms

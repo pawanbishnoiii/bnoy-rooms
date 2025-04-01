@@ -1,95 +1,75 @@
 
-import { supabase } from "@/integrations/supabase/client";
 import { Property, PropertyWithScore } from "@/types";
-import { mapDbPropertyToProperty } from "@/utils/typeUtils";
 
 /**
- * Get AI recommendations for properties based on search prompt
- * @param prompt The search prompt or configuration object
- * @returns An array of properties with scores
+ * Get AI recommendations based on query or user preferences
+ * @param query Search query string or user preferences object
+ * @returns Array of properties with relevance scores
  */
-export async function getAIRecommendations(prompt: string | { userPreferences?: any, limit?: number }): Promise<PropertyWithScore[]> {
-  try {
-    // In a real implementation, we would call the Google AI API
-    // For now, we'll fetch some random properties as a fallback
-    
-    // Handle both string and object parameters
-    const limit = typeof prompt === 'object' && prompt.limit ? prompt.limit : 5;
-    const searchQuery = typeof prompt === 'string' ? prompt : '';
-    
-    // Build query
-    let query = supabase
-      .from('properties')
-      .select(`
-        *,
-        location:locations(*),
-        images:property_images(*),
-        facilities:property_facilities(facility:facilities(*))
-      `)
-      .limit(limit);
-    
-    // If we have preferences in an object format, apply filters
-    if (typeof prompt === 'object' && prompt.userPreferences) {
-      const { gender, budget, location, propertyType } = prompt.userPreferences;
-      
-      if (gender && gender !== 'common') {
-        query = query.eq('gender', gender);
-      }
-      
-      if (budget) {
-        query = query.lte('monthly_price', budget);
-      }
-      
-      if (location) {
-        query = query.ilike('address', `%${location}%`);
-      }
-      
-      if (propertyType) {
-        query = query.eq('type', propertyType);
-      }
-    } else if (searchQuery) {
-      // If we have a string query, search by name or address
-      query = query.or(`name.ilike.%${searchQuery}%,address.ilike.%${searchQuery}%`);
+export async function getAIRecommendations(
+  query: string | { userPreferences?: any; limit?: number }
+): Promise<PropertyWithScore[]> {
+  // This is a stub implementation that would be replaced with actual AI logic
+  console.log("Generating AI recommendations for:", query);
+  
+  // Simulate API delay
+  await new Promise(resolve => setTimeout(resolve, 500));
+  
+  // Return mock data
+  return [
+    {
+      id: "property-1",
+      name: "Sunrise PG",
+      type: "pg",
+      address: "123 Main Street, Delhi",
+      monthly_price: 8000,
+      average_rating: 4.5,
+      images: [{ image_url: "https://images.unsplash.com/photo-1555854877-bab0e564b8d5" }],
+      is_verified: true,
+      location: { 
+        name: "Central Delhi", 
+        latitude: 28.6139, 
+        longitude: 77.209
+      },
+      facilities: [{ name: "WiFi" }, { name: "AC" }],
+      score: 0.95,
+      match_reason: "High match based on location and amenities"
+    },
+    {
+      id: "property-2",
+      name: "Comfort Hostel",
+      type: "hostel",
+      address: "456 Park Avenue, Mumbai",
+      monthly_price: 6000,
+      average_rating: 4.2,
+      images: [{ image_url: "https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af" }],
+      is_verified: true,
+      location: { 
+        name: "South Mumbai", 
+        latitude: 18.9667, 
+        longitude: 72.8333
+      },
+      facilities: [{ name: "Meals" }, { name: "Laundry" }],
+      score: 0.85,
+      match_reason: "Good price match for your budget"
+    },
+    {
+      id: "property-3",
+      name: "Student Haven",
+      type: "dormitory",
+      address: "789 College Road, Bangalore",
+      monthly_price: 7500,
+      average_rating: 4.0,
+      images: [{ image_url: "https://images.unsplash.com/photo-1554995207-c18c203602cb" }],
+      is_verified: true,
+      location: { 
+        name: "North Bangalore", 
+        latitude: 13.0827, 
+        longitude: 77.5851
+      },
+      facilities: [{ name: "WiFi" }, { name: "Gym" }],
+      score: 0.75,
+      match_reason: "Close to university and good amenities"
     }
-    
-    const { data, error } = await query;
-      
-    if (error) {
-      throw new Error(error.message);
-    }
-    
-    // Map and add scores
-    return data.map((property: any, index: number) => {
-      // Convert to Property type
-      const mappedProperty = mapDbPropertyToProperty(property);
-      
-      // Add a score (just for demonstration)
-      const score = 1 - (index * 0.1); // Descending scores
-      
-      // Generate a simple match reason based on prompt or preferences
-      let matchReason = '';
-      
-      if (typeof prompt === 'object' && prompt.userPreferences) {
-        const { gender, budget, location } = prompt.userPreferences;
-        if (gender) matchReason += `Matches your gender preference (${gender}). `;
-        if (budget) matchReason += `Within your budget of ₹${budget}. `;
-        if (location) matchReason += `Located near ${location}. `;
-      } else if (searchQuery) {
-        matchReason = `Matches your search for "${searchQuery}"`;
-      }
-      
-      if (!matchReason) {
-        matchReason = 'Recommended based on popularity';
-      }
-      
-      return {
-        ...mappedProperty,
-        score,
-        matchReason
-      };
-    });
-  } catch (error) {
-    console.error('Error in getAIRecommendations:', error);
-    return [];
-  }
+  ];
 }
