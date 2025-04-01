@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -36,50 +35,21 @@ const AIRecommendations: React.FC<AIRecommendationsProps> = ({ userPreferences }
   const fetchRecommendations = async () => {
     setIsLoading(true);
     try {
-      const result = await getAIRecommendations({
+      const recommendedProperties = await getAIRecommendations({
         userPreferences,
         limit: 4
       });
-
-      if (result.error) {
-        throw new Error(result.error);
-      }
-
-      // Transform the data to match our Property interface
-      const transformedData: Property[] = (result.data || []).map((item: any) => ({
-        ...item,
-        // Ensure all required fields from the Property interface are present
-        location: item.location ? {
-          id: item.location.id || '',
-          name: item.location.name || '',
-          latitude: item.location.latitude || null,
-          longitude: item.location.longitude || null,
-          created_at: item.location.created_at || '',
-        } : undefined,
-        facilities: item.facilities?.map((f: any) => ({
-          id: f.id || '',
-          name: f.name || '',
-          created_at: f.created_at || '',
-        })) || [],
-        images: item.images?.map((img: any) => ({
-          id: img.id || '',
-          property_id: img.property_id || item.id,
-          image_url: img.image_url || '',
-          is_primary: img.is_primary || false,
-          created_at: img.created_at || '',
-        })) || [],
-      }));
-
-      setRecommendations(transformedData);
+      
+      setRecommendations(recommendedProperties);
 
       // Generate AI insights
-      if (transformedData.length > 0) {
+      if (recommendedProperties.length > 0) {
         const insights = [
-          `Found ${transformedData.length} properties matching your preferences`,
+          `Found ${recommendedProperties.length} properties matching your preferences`,
           userPreferences?.gender ? `Optimized for ${userPreferences.gender} accommodation` : null,
           userPreferences?.budget ? `Within your budget of ₹${userPreferences.budget}` : null,
           userPreferences?.location ? `Located in or near ${userPreferences.location}` : null,
-          transformedData.some(p => p.average_rating && p.average_rating >= 4) ? 'Includes highly-rated properties' : null,
+          recommendedProperties.some(p => p.average_rating && p.average_rating >= 4) ? 'Includes highly-rated properties' : null,
           userPreferences?.amenities?.length ? `With requested amenities: ${userPreferences.amenities.slice(0, 3).join(', ')}${userPreferences.amenities.length > 3 ? ' and more' : ''}` : null
         ].filter(Boolean) as string[];
         

@@ -1,5 +1,5 @@
 
-import { Property } from '@/types';
+import { Property, Booking, Favorite } from '@/types';
 
 /**
  * Maps database property object to our frontend Property type
@@ -45,5 +45,18 @@ export function mapDbBookingToBooking(dbBooking: any): any {
     created_at: dbBooking.created_at,
     updated_at: dbBooking.updated_at,
     property: dbBooking.property ? mapDbPropertyToProperty(dbBooking.property) : null
+  };
+}
+
+/**
+ * Maps database favorite object to our frontend Favorite type
+ */
+export function mapDbFavoriteToFavorite(dbFavorite: any): Favorite {
+  return {
+    id: dbFavorite.id,
+    user_id: dbFavorite.user_id,
+    property_id: dbFavorite.property_id,
+    created_at: dbFavorite.created_at,
+    property: dbFavorite.property ? mapDbPropertyToProperty(dbFavorite.property) : null
   };
 }

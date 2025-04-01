@@ -18,6 +18,7 @@ const StudentDashboard = () => {
   const [favorites, setFavorites] = useState<Favorite[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeBookingCount, setActiveBookingCount] = useState(0);
+  const [isLoadingFavorites, setIsLoadingFavorites] = useState(true);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -41,9 +42,10 @@ const StudentDashboard = () => {
       // Fetch favorites
       const { data: favoritesData, error: favoritesError } = await supabase
         .from('favorites')
-        .select('*, property:properties(*)')
-        .eq('user_id', user.id);
-
+        .select(`*, property:properties(*)`)
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+      
       if (favoritesError) throw favoritesError;
 
       // Map the data to the correct types
@@ -66,6 +68,35 @@ const StudentDashboard = () => {
       setIsLoading(false);
     }
   };
+
+  const fetchFavorites = async () => {
+    setIsLoadingFavorites(true);
+    try {
+      const { data, error } = await supabase
+        .from('favorites')
+        .select(`*, property:properties(*)`)
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      
+      // Use the correct mapping function
+      setFavorites(data ? data.map(fav => mapDbFavoriteToFavorite(fav)) : []);
+    } catch (error) {
+      console.error('Error fetching favorites:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to load your favorites. Please try again later.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoadingFavorites(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchFavorites();
+  }, [user]);
 
   if (isLoading) {
     return <div>Loading...</div>;

@@ -273,7 +273,20 @@ const Properties = () => {
           <div className="w-3/4 p-4">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {filteredProperties.map(property => (
-                <PropertyCard key={property.id} property={property} />
+                <PropertyCard 
+                  key={property.id}
+                  id={property.id}
+                  name={property.name}
+                  type={property.type}
+                  location={property.location?.name || property.address || ''}
+                  price={property.monthly_price}
+                  rating={property.average_rating || 4.5}
+                  reviewCount={12} // Mock data
+                  image={property.images?.[0]?.image_url || "https://images.unsplash.com/photo-1555854877-bab0e564b8d5?ixlib=rb-4.0.3"}
+                  facilities={property.facilities?.map(f => f.name) || []}
+                  distance="1.2 km" // Mock data
+                  isVerified={property.is_verified}
+                />
               ))}
             </div>
           </div>
