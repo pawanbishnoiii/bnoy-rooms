@@ -49,16 +49,18 @@ const StudentDashboard = () => {
       if (favoritesError) throw favoritesError;
 
       // Map the data to the correct types
-      const mappedBookings = bookingsData.map(mapDbBookingToBooking);
-      const mappedFavorites = favoritesData.map(mapDbFavoriteToFavorite);
+      const mappedBookings = bookingsData ? bookingsData.map(mapDbBookingToBooking) : [];
+      
+      // Use the correct mapping function for favorites
+      const mappedFavorites = favoritesData ? favoritesData.map((fav) => mapDbFavoriteToFavorite(fav)) : [];
 
       setBookings(mappedBookings);
       setFavorites(mappedFavorites);
       
       // Count active bookings (now using the correct booking status comparison)
-      const activeCount = bookingsData.filter(b => 
+      const activeCount = bookingsData ? bookingsData.filter(b => 
         b.status === 'confirmed' || b.status === 'pending'
-      ).length;
+      ).length : 0;
       
       setActiveBookingCount(activeCount);
 
@@ -70,6 +72,8 @@ const StudentDashboard = () => {
   };
 
   const fetchFavorites = async () => {
+    if (!user) return;
+    
     setIsLoadingFavorites(true);
     try {
       const { data, error } = await supabase
@@ -81,7 +85,8 @@ const StudentDashboard = () => {
       if (error) throw error;
       
       // Use the correct mapping function
-      setFavorites(data ? data.map(fav => mapDbFavoriteToFavorite(fav)) : []);
+      const mappedFavorites = data ? data.map(fav => mapDbFavoriteToFavorite(fav)) : [];
+      setFavorites(mappedFavorites);
     } catch (error) {
       console.error('Error fetching favorites:', error);
       toast({

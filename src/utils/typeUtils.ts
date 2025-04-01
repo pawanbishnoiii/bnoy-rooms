@@ -1,5 +1,5 @@
 
-import { Booking, Facility, Location, Property, PropertyImage, Room, UserProfile } from "@/types";
+import { Booking, Facility, Favorite, Location, Property, PropertyImage, Room, UserProfile } from "@/types";
 
 /**
  * Map a database property object to frontend Property type
@@ -82,5 +82,18 @@ export function mapDbBookingToBooking(dbBooking: any): Booking {
     updated_at: dbBooking.updated_at,
     property: dbBooking.property,
     user: dbBooking.user
+  };
+}
+
+/**
+ * Map a database favorite object to frontend Favorite type
+ */
+export function mapDbFavoriteToFavorite(dbFavorite: any): Favorite {
+  return {
+    id: dbFavorite.id,
+    user_id: dbFavorite.user_id,
+    property_id: dbFavorite.property_id,
+    created_at: dbFavorite.created_at,
+    property: dbFavorite.property ? mapDbPropertyToProperty(dbFavorite.property) : undefined
   };
 }
