@@ -27,10 +27,42 @@ export function mapDbPropertyToProperty(dbProperty: any): Property {
     created_at: dbProperty.created_at,
     updated_at: dbProperty.updated_at,
     // Handle nested objects with safe defaults
-    location: dbProperty.location || null,
-    images: Array.isArray(dbProperty.images) ? dbProperty.images : [],
-    facilities: Array.isArray(dbProperty.facilities) ? dbProperty.facilities : [],
-    rooms: Array.isArray(dbProperty.rooms) ? dbProperty.rooms : [],
+    location: dbProperty.location ? {
+      id: dbProperty.location.id || '',
+      name: dbProperty.location.name || '',
+      latitude: dbProperty.location.latitude || 0,
+      longitude: dbProperty.location.longitude || 0,
+      created_at: dbProperty.location.created_at || '',
+    } : null,
+    images: Array.isArray(dbProperty.images) ? dbProperty.images.map((img: any) => ({
+      id: img.id || '',
+      property_id: img.property_id || dbProperty.id,
+      image_url: img.image_url || '',
+      is_primary: img.is_primary || false,
+      created_at: img.created_at || '',
+    })) : [],
+    facilities: Array.isArray(dbProperty.facilities) ? dbProperty.facilities.map((f: any) => {
+      const facility = f.facility || f;
+      return {
+        id: facility.id || '',
+        name: facility.name || '',
+        icon: facility.icon,
+        created_at: facility.created_at || '',
+      };
+    }) : [],
+    rooms: Array.isArray(dbProperty.rooms) ? dbProperty.rooms.map((room: any) => ({
+      id: room.id || '',
+      property_id: room.property_id || dbProperty.id,
+      room_number: room.room_number || '',
+      capacity: room.capacity || 1,
+      occupied_beds: room.occupied_beds || 0,
+      monthly_price: room.monthly_price || 0,
+      daily_price: room.daily_price || null,
+      description: room.description || null,
+      is_available: room.is_available !== false, 
+      created_at: room.created_at || '',
+      updated_at: room.updated_at || '',
+    })) : [],
     // Optional fields
     available_rooms: dbProperty.available_rooms,
     total_rooms: dbProperty.total_rooms,

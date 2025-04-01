@@ -1,39 +1,53 @@
 
 import React, { useState } from 'react';
-import { Button } from '../ui/button';
-import { Input } from '../ui/input';
-import { Label } from '../ui/label';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../ui/card';
-import { Textarea } from '../ui/textarea';
-import { toast } from '../ui/use-toast';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Steps } from '@/components/ui/steps';
-import { Building, User, MapPin, Upload } from 'lucide-react';
 
 const MerchantOnboarding = () => {
+  const navigate = useNavigate();
+  const { user, profile, refreshProfile } = useAuth();
+  const { toast } = useToast();
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
+  
+  // Form state
   const [formData, setFormData] = useState({
     businessName: '',
-    contactPerson: '',
-    email: '',
-    phone: '',
+    contactPerson: profile?.full_name || '',
+    email: profile?.email || '',
+    phone: profile?.phone || '',
     address: '',
-    description: '',
-    logo: null,
+    website: '',
   });
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData({
-      ...formData,
-      [name]: value,
-    });
-  };
+  const steps = [
+    { 
+      title: 'Business Information',
+      description: 'Tell us about your business'
+    },
+    { 
+      title: 'Contact Details',
+      description: 'How can we reach you?'
+    },
+    { 
+      title: 'Legal Information',
+      description: 'Provide legal & tax details'
+    },
+  ];
 
-  const handleFileChange = (e) => {
-    setFormData({
-      ...formData,
-      logo: e.target.files[0],
-    });
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
   };
 
   const nextStep = () => {
@@ -48,169 +62,201 @@ const MerchantOnboarding = () => {
     }
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    // Submit to backend
-    toast({
-      title: 'Registration Successful',
-      description: 'Your merchant account has been created and is pending approval.',
-    });
-  };
-
-  const steps = [
-    {
-      title: 'Business Details',
-      description: 'Enter your business information',
-      icon: <Building size={16} />,
-    },
-    {
-      title: 'Contact Information',
-      description: 'Provide contact details',
-      icon: <User size={16} />,
-    },
-    {
-      title: 'Location',
-      description: 'Enter your address',
-      icon: <MapPin size={16} />,
-    },
-    {
-      title: 'Upload',
-      description: 'Upload business documents',
-      icon: <Upload size={16} />,
-    },
-  ];
-
-  const renderStepContent = () => {
-    switch (currentStep) {
-      case 0:
-        return (
-          <>
-            <div className="grid gap-4">
-              <div>
-                <Label htmlFor="businessName">Business Name</Label>
-                <Input
-                  id="businessName"
-                  name="businessName"
-                  value={formData.businessName}
-                  onChange={handleInputChange}
-                  placeholder="Enter your business name"
-                />
-              </div>
-              <div>
-                <Label htmlFor="description">Business Description</Label>
-                <Textarea
-                  id="description"
-                  name="description"
-                  value={formData.description}
-                  onChange={handleInputChange}
-                  placeholder="Describe your business and services"
-                />
-              </div>
-            </div>
-            <div className="flex justify-end">
-              <Button onClick={nextStep}>Next</Button>
-            </div>
-          </>
-        );
-      case 1:
-        return (
-          <>
-            <div className="grid gap-4">
-              <div>
-                <Label htmlFor="contactPerson">Contact Person</Label>
-                <Input
-                  id="contactPerson"
-                  name="contactPerson"
-                  value={formData.contactPerson}
-                  onChange={handleInputChange}
-                  placeholder="Enter contact person's name"
-                />
-              </div>
-              <div>
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  name="email"
-                  type="email"
-                  value={formData.email}
-                  onChange={handleInputChange}
-                  placeholder="Enter contact email"
-                />
-              </div>
-              <div>
-                <Label htmlFor="phone">Phone</Label>
-                <Input
-                  id="phone"
-                  name="phone"
-                  type="tel"
-                  value={formData.phone}
-                  onChange={handleInputChange}
-                  placeholder="Enter contact phone number"
-                />
-              </div>
-            </div>
-            <div className="flex justify-between">
-              <Button variant="outline" onClick={prevStep}>Previous</Button>
-              <Button onClick={nextStep}>Next</Button>
-            </div>
-          </>
-        );
-      case 2:
-        return (
-          <>
-            <div className="grid gap-4">
-              <div>
-                <Label htmlFor="address">Address</Label>
-                <Textarea
-                  id="address"
-                  name="address"
-                  value={formData.address}
-                  onChange={handleInputChange}
-                  placeholder="Enter your business address"
-                />
-              </div>
-            </div>
-            <div className="flex justify-between">
-              <Button variant="outline" onClick={prevStep}>Previous</Button>
-              <Button onClick={nextStep}>Next</Button>
-            </div>
-          </>
-        );
-      case 3:
-        return (
-          <>
-            <div className="grid gap-4">
-              <div>
-                <Label htmlFor="logo">Business Logo</Label>
-                <Input id="logo" type="file" onChange={handleFileChange} />
-              </div>
-            </div>
-            <div className="flex justify-between">
-              <Button variant="outline" onClick={prevStep}>Previous</Button>
-              <Button onClick={handleSubmit}>Submit Application</Button>
-            </div>
-          </>
-        );
-      default:
-        return null;
+  const submitForm = async () => {
+    if (!user) return;
+    
+    try {
+      setIsSubmitting(true);
+      
+      // Update user profile to merchant role
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({ role: 'merchant' })
+        .eq('id', user.id);
+        
+      if (profileError) throw profileError;
+      
+      // Create merchant entry
+      const { error: merchantError } = await supabase
+        .from('merchants')
+        .insert({
+          id: user.id,
+          business_name: formData.businessName,
+          contact_person: formData.contactPerson,
+          email: formData.email,
+          phone: formData.phone,
+          address: formData.address,
+          is_verified: false
+        });
+        
+      if (merchantError) throw merchantError;
+      
+      // Refresh the user profile to get updated role
+      await refreshProfile();
+      
+      toast({
+        title: 'Welcome aboard!',
+        description: 'Your merchant account has been created successfully.',
+      });
+      
+      navigate('/dashboard/overview');
+      
+    } catch (error: any) {
+      console.error('Error creating merchant account:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to create merchant account.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="max-w-3xl mx-auto py-8">
+    <div className="container max-w-2xl mx-auto py-16 px-4">
       <Card>
         <CardHeader>
-          <CardTitle>Merchant Onboarding</CardTitle>
-          <CardDescription>Register your business as a merchant on our platform.</CardDescription>
+          <CardTitle className="text-2xl">Become a Property Owner</CardTitle>
+          <CardDescription>
+            Start listing your properties and earn rental income
+          </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-6">
+        
+        <CardContent>
           <Steps 
             steps={steps}
             currentStep={currentStep}
             className="mb-8"
           />
-          {renderStepContent()}
+          
+          {currentStep === 0 && (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="businessName">Business Name</Label>
+                <Input
+                  id="businessName"
+                  name="businessName"
+                  value={formData.businessName}
+                  onChange={handleChange}
+                  placeholder="Enter your business name"
+                  required
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="contactPerson">Contact Person</Label>
+                <Input
+                  id="contactPerson"
+                  name="contactPerson"
+                  value={formData.contactPerson}
+                  onChange={handleChange}
+                  placeholder="Enter contact person name"
+                  required
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="address">Business Address</Label>
+                <Input
+                  id="address"
+                  name="address"
+                  value={formData.address}
+                  onChange={handleChange}
+                  placeholder="Enter your business address"
+                  required
+                />
+              </div>
+            </div>
+          )}
+          
+          {currentStep === 1 && (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="email">Email Address</Label>
+                <Input
+                  id="email"
+                  name="email"
+                  type="email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  placeholder="Enter your email address"
+                  required
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="phone">Phone Number</Label>
+                <Input
+                  id="phone"
+                  name="phone"
+                  value={formData.phone}
+                  onChange={handleChange}
+                  placeholder="Enter your phone number"
+                  required
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="website">Website (Optional)</Label>
+                <Input
+                  id="website"
+                  name="website"
+                  value={formData.website}
+                  onChange={handleChange}
+                  placeholder="Enter your website URL"
+                />
+              </div>
+            </div>
+          )}
+          
+          {currentStep === 2 && (
+            <div className="space-y-4">
+              <div className="rounded-lg bg-muted p-4">
+                <h3 className="font-medium mb-2">Terms of Service</h3>
+                <p className="text-sm text-muted-foreground mb-4">
+                  By creating a merchant account, you agree to our terms of service and listing policies. You acknowledge that:
+                </p>
+                <ul className="text-sm text-muted-foreground space-y-2 list-disc pl-5">
+                  <li>You have legal rights to list the properties</li>
+                  <li>All information provided is accurate and up-to-date</li>
+                  <li>You will respond to booking inquiries within 24 hours</li>
+                  <li>You accept the platform's service fee for each successful booking</li>
+                </ul>
+              </div>
+              
+              <div className="rounded-lg bg-muted p-4">
+                <h3 className="font-medium mb-2">What Happens Next?</h3>
+                <ol className="text-sm text-muted-foreground space-y-2 list-decimal pl-5">
+                  <li>Create your merchant profile</li>
+                  <li>Add your properties and rooms</li>
+                  <li>Set pricing and availability</li>
+                  <li>Start receiving bookings</li>
+                </ol>
+              </div>
+            </div>
+          )}
         </CardContent>
+        
+        <CardFooter className="flex justify-between">
+          {currentStep > 0 ? (
+            <Button variant="outline" onClick={prevStep} disabled={isSubmitting}>
+              Previous
+            </Button>
+          ) : (
+            <Button variant="outline" onClick={() => navigate('/')}>
+              Cancel
+            </Button>
+          )}
+          
+          {currentStep < steps.length - 1 ? (
+            <Button onClick={nextStep}>Next Step</Button>
+          ) : (
+            <Button onClick={submitForm} disabled={isSubmitting}>
+              {isSubmitting ? 'Processing...' : 'Create Merchant Account'}
+            </Button>
+          )}
+        </CardFooter>
       </Card>
     </div>
   );

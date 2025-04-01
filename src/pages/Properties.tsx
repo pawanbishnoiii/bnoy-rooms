@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Property, Facility, Location } from '@/types';
@@ -28,6 +27,7 @@ import PropertyMap from '@/components/maps/PropertyMap';
 import AIRecommendations from '@/components/properties/AIRecommendations';
 import { useAuth } from '@/contexts/AuthContext';
 import { Badge } from '@/components/ui/badge';
+import { mapDbPropertyToProperty, safelyMapData } from '@/utils/typeUtils';
 
 interface FiltersState {
   gender: string;
@@ -63,7 +63,6 @@ const PropertiesPage = () => {
     rating: null,
   });
 
-  // Common amenities for quick access
   const commonAmenities = [
     { id: 'wifi', name: 'WiFi', icon: <MapPin size={16} /> },
     { id: 'bathroom', name: 'Independent Bathroom', icon: <Bath size={16} /> },
@@ -73,7 +72,6 @@ const PropertiesPage = () => {
     { id: 'bed', name: 'Bed', icon: <BedDouble size={16} /> },
   ];
 
-  // Max price for the range slider
   const MAX_PRICE = 50000;
 
   useEffect(() => {
@@ -100,27 +98,7 @@ const PropertiesPage = () => {
       }
 
       if (data) {
-        // Transform the data to match our Property type
-        const formattedProperties: Property[] = data.map(property => ({
-          ...property,
-          location: property.location ? {
-            id: property.location.id,
-            name: property.location.name,
-            latitude: property.location.latitude,
-            longitude: property.location.longitude,
-            created_at: property.location.created_at,
-          } : undefined,
-          facilities: property.facilities?.map(item => item.facility) || [],
-          images: property.images?.map(img => ({
-            id: img.id,
-            property_id: img.property_id,
-            image_url: img.image_url,
-            is_primary: img.is_primary || false,
-            created_at: img.created_at,
-          })) || [],
-          average_rating: Math.floor(Math.random() * 5) + 1, // Mock data for now, will be replaced with real ratings
-        }));
-        
+        const formattedProperties = safelyMapData(data, mapDbPropertyToProperty);
         setProperties(formattedProperties);
       }
     } catch (error) {
@@ -204,17 +182,14 @@ const PropertiesPage = () => {
   };
 
   const filteredProperties = properties.filter(property => {
-    // Gender filter
     if (filters.gender && property.gender !== filters.gender) {
       return false;
     }
 
-    // Property type filter
     if (filters.propertyType && property.type !== filters.propertyType) {
       return false;
     }
 
-    // Price filter
     const price = filters.timeFrame === 'daily' 
       ? property.daily_price || property.monthly_price / 30 
       : property.monthly_price;
@@ -223,12 +198,10 @@ const PropertiesPage = () => {
       return false;
     }
 
-    // Location filter
-    if (filters.location && property.location_id !== filters.location) {
+    if (filters.location && property.location && property.location.id !== filters.location) {
       return false;
     }
 
-    // Facilities filter
     if (filters.facilities.length > 0) {
       const propertyFacilityIds = property.facilities?.map(f => f.id) || [];
       if (!filters.facilities.every(id => propertyFacilityIds.includes(id))) {
@@ -236,12 +209,10 @@ const PropertiesPage = () => {
       }
     }
 
-    // Rating filter
     if (filters.rating && property.average_rating && property.average_rating < filters.rating) {
       return false;
     }
 
-    // Search term
     if (filters.searchTerm) {
       const searchTermLower = filters.searchTerm.toLowerCase();
       return (
@@ -282,7 +253,6 @@ const PropertiesPage = () => {
             />
           )}
 
-          {/* Search and filter bar */}
           <div className="mb-8 relative">
             <div className="flex items-center space-x-2 mb-4">
               <div className="relative flex-1">
@@ -337,7 +307,6 @@ const PropertiesPage = () => {
                   </div>
                   
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    {/* Gender filter */}
                     <div>
                       <label className="text-sm font-medium mb-2 block">Gender</label>
                       <Select 
@@ -356,7 +325,6 @@ const PropertiesPage = () => {
                       </Select>
                     </div>
 
-                    {/* Property Type filter */}
                     <div>
                       <label className="text-sm font-medium mb-2 block">Property Type</label>
                       <Select 
@@ -375,7 +343,6 @@ const PropertiesPage = () => {
                       </Select>
                     </div>
 
-                    {/* Location filter */}
                     <div>
                       <label className="text-sm font-medium mb-2 block">Location</label>
                       <Select 
@@ -396,7 +363,6 @@ const PropertiesPage = () => {
                       </Select>
                     </div>
 
-                    {/* Rating filter */}
                     <div>
                       <label className="text-sm font-medium mb-2 block">Minimum Rating</label>
                       <Select 
@@ -415,7 +381,6 @@ const PropertiesPage = () => {
                       </Select>
                     </div>
 
-                    {/* Time frame filter */}
                     <div>
                       <label className="text-sm font-medium mb-2 block">Time Frame</label>
                       <Select 
@@ -433,7 +398,6 @@ const PropertiesPage = () => {
                     </div>
                   </div>
 
-                  {/* Price Range filter */}
                   <div className="mt-6">
                     <div className="flex justify-between items-center mb-2">
                       <label className="text-sm font-medium">Price Range</label>
@@ -452,7 +416,6 @@ const PropertiesPage = () => {
                     />
                   </div>
 
-                  {/* Common Amenities quick filter */}
                   <div className="mt-6">
                     <label className="text-sm font-medium mb-2 block">Common Amenities</label>
                     <div className="flex flex-wrap gap-2 mb-4">
@@ -476,7 +439,6 @@ const PropertiesPage = () => {
                     </div>
                   </div>
 
-                  {/* All Facilities filter */}
                   <div className="mt-2">
                     <Accordion type="single" collapsible>
                       <AccordionItem value="facilities">
@@ -507,7 +469,6 @@ const PropertiesPage = () => {
               </Card>
             )}
 
-            {/* Filter tags */}
             {(filters.gender || filters.location || filters.propertyType || filters.facilities.length > 0 || filters.rating) && (
               <div className="flex flex-wrap gap-2 mb-6">
                 {filters.gender && (
@@ -583,7 +544,6 @@ const PropertiesPage = () => {
             )}
           </div>
 
-          {/* Results count */}
           <div className="mb-6">
             <h1 className="text-2xl font-bold mb-2">Available Properties</h1>
             <p className="text-muted-foreground">
@@ -591,7 +551,6 @@ const PropertiesPage = () => {
             </p>
           </div>
 
-          {/* Map View */}
           {viewMode === 'map' && (
             <div className="mb-8">
               <PropertyMap 
@@ -601,7 +560,6 @@ const PropertiesPage = () => {
             </div>
           )}
 
-          {/* Properties grid */}
           {viewMode === 'list' && (
             loading ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">

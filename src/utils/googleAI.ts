@@ -1,6 +1,7 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { Property, Location, Facility, PropertyImage } from '@/types';
+import { Property, Location, Facility, PropertyImage, PropertyWithScore } from '@/types';
+import { mapDbPropertyToProperty } from './typeUtils';
 
 // Google AI API Key
 const GOOGLE_AI_API_KEY = 'AIzaSyA88AkZfdrXeNDnRX0R45m1rw_GkstEb_U';
@@ -15,13 +16,6 @@ interface RecommendationOptions {
   };
   nearbyAmenities?: boolean;
   limit?: number;
-}
-
-// Define a type that extends Property with the matchScore property
-interface PropertyWithScore extends Property {
-  matchScore?: number;
-  ai_strengths?: string[];
-  ai_recommended?: boolean;
 }
 
 export const getAIRecommendations = async (options: RecommendationOptions = {}) => {
@@ -103,37 +97,19 @@ export const getAIRecommendations = async (options: RecommendationOptions = {}) 
     console.log('User preferences:', preferences);
     console.log('Properties for recommendation:', propertyDescriptions);
 
-    // Simulate AI recommendation by sorting properties based on preferences
-    // Create a new array of PropertyWithScore objects with properly mapped properties
-    const recommendedProperties: PropertyWithScore[] = properties.map(property => {
-      // Create a property object that conforms to the PropertyWithScore interface
-      return {
-        ...property,
-        // Ensure location has all required fields from the Location type
-        location: property.location ? {
-          id: property.location_id || '',
-          name: property.location.name || '',
-          latitude: property.latitude || null,
-          longitude: property.longitude || null,
-          created_at: property.created_at || '',
-        } : undefined,
-        // Map facilities properly to match Facility type
-        facilities: property.facilities ? property.facilities.map((f: any) => ({
-          id: f.facility.id,
-          name: f.facility.name,
-          created_at: f.facility.created_at
-        })) : [],
-        // Map images properly to match PropertyImage type
-        images: property.images ? property.images.map((img: any) => ({
-          id: img.id || `img-${Math.random().toString(36).substring(2, 9)}`,
-          property_id: img.property_id || property.id,
-          image_url: img.image_url,
-          is_primary: img.is_primary || false,
-          created_at: img.created_at || property.created_at
-        })) : [],
-        // Initialize with default matchScore of 100
-        matchScore: 100
+    // Map database objects to our PropertyWithScore interface and simulate an AI recommendation
+    const recommendedProperties = properties.map((property: any) => {
+      // Create property object using our mapper to ensure it conforms to our interfaces
+      const mappedProperty = mapDbPropertyToProperty(property);
+      
+      // Add the score and strengths properties
+      const propertyWithScore: PropertyWithScore = {
+        ...mappedProperty,
+        matchScore: 100, // Default score
+        ai_strengths: ['Good location', 'Well priced']
       };
+      
+      return propertyWithScore;
     });
 
     // Apply advanced sorting logic based on preferences
@@ -171,172 +147,68 @@ export const getAIRecommendations = async (options: RecommendationOptions = {}) 
         
         // Amenities match
         if (options.userPreferences?.amenities && options.userPreferences.amenities.length > 0) {
-          const propertyFacilities = property.facilities?.map(f => f.name.toLowerCase()) || [];
-          const matchedAmenities = options.userPreferences.amenities.filter(
-            amenity => propertyFacilities.some(f => f.includes(amenity.toLowerCase()))
+          const propertyFacilityNames = property.facilities?.map(f => f.name.toLowerCase()) || [];
+          const requestedAmenities = options.userPreferences.amenities.map(a => a.toLowerCase());
+          
+          const matchedAmenities = requestedAmenities.filter(a => 
+            propertyFacilityNames.some(f => f.includes(a))
           );
           
-          const amenityMatchPercent = matchedAmenities.length / options.userPreferences.amenities.length;
-          matchScore -= (1 - amenityMatchPercent) * 15;
+          const amenityScore = (matchedAmenities.length / requestedAmenities.length) * 20;
+          matchScore -= 20 - amenityScore;
         }
         
-        // Add random factor for variety (±5 points)
-        matchScore += (Math.random() * 10) - 5;
+        // Update the property score
+        property.matchScore = Math.max(0, Math.min(100, matchScore));
         
-        // Update the property's matchScore
-        property.matchScore = matchScore;
-        property.average_rating = (Math.floor(Math.random() * 20) + 30) / 10; // Random rating between 3.0 and 5.0
+        // Generate AI strengths based on the property's features
+        const strengths: string[] = [];
+        
+        // Add strengths based on property features
+        if (property.location?.name && options.userPreferences?.location && 
+            property.location.name.toLowerCase().includes(options.userPreferences.location.toLowerCase())) {
+          strengths.push('Excellent location match');
+        }
+        
+        if (options.userPreferences?.budget && property.monthly_price <= options.userPreferences.budget) {
+          strengths.push('Within budget');
+        }
+        
+        if (property.facilities && property.facilities.length > 5) {
+          strengths.push('Well-equipped');
+        }
+        
+        if (property.is_verified) {
+          strengths.push('Verified property');
+        }
+        
+        if (property.average_rating && property.average_rating >= 4.5) {
+          strengths.push('Highly rated');
+        }
+        
+        // Ensure we have at least 2 strengths
+        if (strengths.length < 2) {
+          strengths.push('Good value');
+        }
+        
+        property.ai_strengths = strengths.slice(0, 3); // Limit to top 3 strengths
       });
       
-      // Sort by match score
+      // Sort by match score (descending)
       recommendedProperties.sort((a, b) => (b.matchScore || 0) - (a.matchScore || 0));
     }
 
-    // Add AI-generated insights for each property
-    const propertiesWithInsights = recommendedProperties.map(property => {
-      // Generate property strengths
-      const strengths = [];
-      
-      if (options.userPreferences?.gender && property.gender === options.userPreferences.gender) {
-        strengths.push(`Perfect ${property.gender} accommodation`);
-      }
-      
-      if (options.userPreferences?.budget && property.monthly_price <= options.userPreferences.budget) {
-        const budgetDiff = options.userPreferences.budget - property.monthly_price;
-        const percentUnder = (budgetDiff / options.userPreferences.budget) * 100;
-        
-        if (percentUnder >= 20) {
-          strengths.push('Significantly under your budget');
-        } else if (percentUnder > 0) {
-          strengths.push('Within your budget');
-        }
-      }
-      
-      return {
-        ...property,
-        ai_strengths: strengths,
-        ai_recommended: true
-      };
-    });
-
-    // Limit the results
-    const finalRecommendations = propertiesWithInsights.slice(0, options.limit || 5);
-
-    return {
-      data: finalRecommendations,
-      message: 'AI recommendations generated successfully'
+    // Return the top N recommendations based on the limit
+    return { 
+      data: recommendedProperties.slice(0, options.limit || 4),
+      error: null
     };
-  } catch (error: any) {
-    console.error('Error generating AI recommendations:', error);
-    return { data: [], error: error.message };
-  }
-};
-
-// Function to get property insights using AI
-export const getPropertyInsights = async (propertyId: string) => {
-  try {
-    // Fetch property details
-    const { data: property, error } = await supabase
-      .from('properties')
-      .select(`
-        *,
-        location:locations(name),
-        facilities:property_facilities(facility:facilities(*)),
-        images:property_images(image_url, is_primary),
-        reviews(rating, comment, cleanliness_rating, location_rating, value_rating, service_rating)
-      `)
-      .eq('id', propertyId)
-      .single();
-
-    if (error) {
-      throw error;
-    }
-
-    if (!property) {
-      return { data: null, error: 'Property not found' };
-    }
-
-    // In a real implementation, we'd make an actual API call to Google AI
-    console.log('Would analyze property using Google AI:', property);
-
-    // Calculate ratings from reviews
-    let avgRating = 0, 
-        avgCleanliness = 0, 
-        avgLocation = 0, 
-        avgValue = 0, 
-        avgService = 0;
     
-    if (property.reviews?.length > 0) {
-      avgRating = property.reviews.reduce((sum: number, review: any) => sum + review.rating, 0) / property.reviews.length;
-      
-      // Calculate category ratings if available
-      const cleanlinessReviews = property.reviews.filter((r: any) => r.cleanliness_rating);
-      if (cleanlinessReviews.length > 0) {
-        avgCleanliness = cleanlinessReviews.reduce((sum: number, r: any) => sum + r.cleanliness_rating, 0) / cleanlinessReviews.length;
-      }
-      
-      const locationReviews = property.reviews.filter((r: any) => r.location_rating);
-      if (locationReviews.length > 0) {
-        avgLocation = locationReviews.reduce((sum: number, r: any) => sum + r.location_rating, 0) / locationReviews.length;
-      }
-      
-      const valueReviews = property.reviews.filter((r: any) => r.value_rating);
-      if (valueReviews.length > 0) {
-        avgValue = valueReviews.reduce((sum: number, r: any) => sum + r.value_rating, 0) / valueReviews.length;
-      }
-      
-      const serviceReviews = property.reviews.filter((r: any) => r.service_rating);
-      if (serviceReviews.length > 0) {
-        avgService = serviceReviews.reduce((sum: number, r: any) => sum + r.service_rating, 0) / serviceReviews.length;
-      }
-    }
-
-    // Generate enhanced AI insights
-    const insights = {
-      summary: `This ${property.type} in ${property.location?.name || 'the area'} is a ${property.gender} accommodation with a monthly price of ₹${property.monthly_price}.`,
-      strengths: [
-        'Well located for easy commuting',
-        'Competitive pricing for the area',
-        ...(property.facilities?.length > 3 ? ['Good range of amenities and facilities'] : []),
-        ...(avgRating > 4 ? ['Highly rated by previous tenants'] : []),
-        property.gender === 'boys' ? 'Designed for male residents' : 
-        property.gender === 'girls' ? 'Designed for female residents' : 
-        'Suitable for all residents'
-      ],
-      improvements: [
-        property.images?.length < 3 ? 'Could benefit from additional images' : null,
-        property.description?.length < 100 ? 'More detailed description would help potential tenants' : null,
-        avgCleanliness < 4 ? 'Cleanliness could be improved based on reviews' : null,
-        avgService < 4 ? 'Service quality could be enhanced' : null
-      ].filter(Boolean),
-      marketPosition: `This property is priced ${property.monthly_price > 10000 ? 'above' : 'below'} the average for similar accommodations in the area.`,
-      rating: {
-        overall: avgRating.toFixed(1),
-        cleanliness: avgCleanliness.toFixed(1),
-        location: avgLocation.toFixed(1),
-        value: avgValue.toFixed(1),
-        service: avgService.toFixed(1),
-        sentiment: avgRating > 4 ? 'Excellent' : avgRating > 3 ? 'Good' : 'Average'
-      },
-      amenities_analysis: {
-        has_wifi: property.facilities?.some((f: any) => f.facility.name.toLowerCase().includes('wifi')),
-        has_bathroom: property.facilities?.some((f: any) => f.facility.name.toLowerCase().includes('bathroom')),
-        has_ac: property.facilities?.some((f: any) => f.facility.name.toLowerCase().includes('ac')),
-        has_furniture: property.facilities?.some((f: any) => 
-          f.facility.name.toLowerCase().includes('bed') || 
-          f.facility.name.toLowerCase().includes('desk') || 
-          f.facility.name.toLowerCase().includes('chair') || 
-          f.facility.name.toLowerCase().includes('almirah')
-        ),
-      }
-    };
-
-    return {
-      data: insights,
-      message: 'Property insights generated successfully'
-    };
   } catch (error: any) {
-    console.error('Error generating property insights:', error);
-    return { data: null, error: error.message };
+    console.error('Error in AI recommendations:', error);
+    return {
+      data: [],
+      error: error.message
+    };
   }
 };

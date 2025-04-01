@@ -1,101 +1,77 @@
 
 import React from "react";
-import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export interface StepsProps extends React.HTMLAttributes<HTMLDivElement> {
   steps: {
     title: string;
-    description?: string;
-    icon?: React.ReactNode;
+    description: string;
   }[];
   currentStep: number;
-  orientation?: "horizontal" | "vertical";
 }
 
-const Steps = React.forwardRef<HTMLDivElement, StepsProps>(
-  ({ steps, currentStep, orientation = "horizontal", className, ...props }, ref) => {
+export const Steps = React.forwardRef<HTMLDivElement, StepsProps>(
+  ({ steps, currentStep, className, ...props }, ref) => {
     return (
       <div
         ref={ref}
-        className={cn(
-          "flex",
-          orientation === "horizontal" ? "flex-row" : "flex-col",
-          className
-        )}
+        className={cn("flex w-full", className)}
         {...props}
       >
-        {steps.map((step, index) => {
-          const isCompleted = index < currentStep;
-          const isCurrent = index === currentStep;
-
-          return (
-            <div
-              key={index}
-              className={cn(
-                "flex",
-                orientation === "horizontal" ? "flex-col" : "flex-row",
-                "gap-2",
-                { "flex-1": orientation === "horizontal" }
-              )}
-            >
+        {steps.map((step, index) => (
+          <div key={index} className={cn(
+            "flex-1",
+            index !== steps.length - 1 ? "mr-2" : ""
+          )}>
+            <div className="flex items-center">
               <div
                 className={cn(
-                  "flex items-center gap-2",
-                  orientation === "horizontal" && "flex-col"
+                  "flex h-8 w-8 shrink-0 items-center justify-center rounded-full border text-xs font-medium",
+                  index < currentStep
+                    ? "border-primary bg-primary text-primary-foreground" // Completed
+                    : index === currentStep
+                    ? "border-primary bg-background text-foreground" // Current
+                    : "border-input bg-background text-muted-foreground" // Upcoming
                 )}
               >
+                {index < currentStep ? (
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-check"><polyline points="20 6 9 17 4 12"/></svg>
+                ) : (
+                  <span>{index + 1}</span>
+                )}
+              </div>
+              {index !== steps.length - 1 && (
                 <div
                   className={cn(
-                    "flex h-8 w-8 items-center justify-center rounded-full border-2 font-medium",
-                    {
-                      "border-primary bg-primary text-white": isCompleted,
-                      "border-primary text-primary": isCurrent,
-                      "border-gray-300 text-gray-500": !isCompleted && !isCurrent,
-                    }
+                    "h-[2px] flex-1 mx-1 bg-muted",
+                    index < currentStep ? "bg-primary" : ""
                   )}
-                >
-                  {isCompleted ? <Check className="h-5 w-5" /> : step.icon || index + 1}
-                </div>
-                {index < steps.length - 1 && (
-                  <div
-                    className={cn(
-                      orientation === "horizontal"
-                        ? "h-px w-full bg-gray-300"
-                        : "h-full w-px bg-gray-300 ml-4 my-2",
-                      {
-                        "bg-primary": isCompleted,
-                      }
-                    )}
-                  />
-                )}
-              </div>
-              <div
+                />
+              )}
+            </div>
+            <div className="mt-2">
+              <p
                 className={cn(
-                  "flex flex-col",
-                  orientation === "horizontal" && "mt-2 items-center text-center"
+                  "text-xs font-medium",
+                  index <= currentStep ? "text-foreground" : "text-muted-foreground"
                 )}
               >
-                <span
-                  className={cn("font-medium", {
-                    "text-primary": isCompleted || isCurrent,
-                    "text-gray-500": !isCompleted && !isCurrent,
-                  })}
-                >
-                  {step.title}
-                </span>
-                {step.description && (
-                  <span className="text-sm text-gray-500">{step.description}</span>
+                {step.title}
+              </p>
+              <p
+                className={cn(
+                  "text-xs",
+                  index <= currentStep ? "text-muted-foreground" : "text-muted-foreground/60"
                 )}
-              </div>
+              >
+                {step.description}
+              </p>
             </div>
-          );
-        })}
+          </div>
+        ))}
       </div>
     );
   }
 );
 
 Steps.displayName = "Steps";
-
-export { Steps };

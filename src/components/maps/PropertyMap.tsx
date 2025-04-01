@@ -1,106 +1,116 @@
 
-import React, { useEffect, useRef } from 'react';
+import React, { useState } from 'react';
+import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import { Property } from '@/types';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Star } from 'lucide-react';
+import 'leaflet/dist/leaflet.css';
+import L from 'leaflet';
+import { useNavigate } from 'react-router-dom';
+
+// Fix Leaflet default marker issue in React
+// @ts-ignore
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png',
+  iconUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png',
+  shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
+});
 
 interface PropertyMapProps {
-  property?: Property;
-  properties?: Property[];
-  center?: [number, number];
-  zoom?: number;
+  properties: Property[];
   height?: string;
+  zoom?: number;
+  center?: [number, number];
 }
 
-const PropertyMap: React.FC<PropertyMapProps> = ({
-  property,
-  properties = [],
-  center,
-  zoom = 15,
-  height = '400px'
+// Component to recenter map
+function ChangeView({ center, zoom }: { center: [number, number]; zoom: number }) {
+  const map = useMap();
+  map.setView(center, zoom);
+  return null;
+}
+
+const PropertyMap: React.FC<PropertyMapProps> = ({ 
+  properties, 
+  height = '500px',
+  zoom = 12,
+  center
 }) => {
-  const mapContainerRef = useRef<HTMLDivElement>(null);
-  const mapInstanceRef = useRef<any>(null);
-
-  useEffect(() => {
-    if (!mapContainerRef.current) return;
-
-    // Calculate map center
-    let mapCenter: [number, number];
-    if (center) {
-      mapCenter = center;
-    } else if (property && property.location?.latitude && property.location?.longitude) {
-      mapCenter = [property.location.latitude as number, property.location.longitude as number];
-    } else if (property && property.latitude && property.longitude) {
-      mapCenter = [property.latitude as number, property.longitude as number];
-    } else if (properties.length > 0 && properties[0].location?.latitude && properties[0].location?.longitude) {
-      mapCenter = [properties[0].location.latitude as number, properties[0].location.longitude as number];
-    } else {
-      // Default to center of India if no coordinates provided
-      mapCenter = [20.5937, 78.9629];
-    }
-
-    console.log('Initializing map with center:', mapCenter);
-
-    // In a real implementation, this is where we would initialize the Leaflet map
-    // For example:
-    // const map = L.map(mapContainerRef.current).setView(mapCenter, zoom);
-    // L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    //   attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-    // }).addTo(map);
-    
-    // Add markers for properties
-    if (property) {
-      const lat = property.location?.latitude || property.latitude;
-      const lng = property.location?.longitude || property.longitude;
-      
-      if (lat && lng) {
-        console.log('Would add marker for single property:', property.name);
-        // In real implementation: 
-        // L.marker([lat, lng])
-        //   .addTo(map)
-        //   .bindPopup(`<b>${property.name}</b><br>${property.address}`);
-      }
-    } else if (properties.length > 0) {
-      console.log(`Would add ${properties.length} markers to the map`);
-      // In real implementation:
-      // properties.forEach(p => {
-      //   const lat = p.location?.latitude || p.latitude;
-      //   const lng = p.location?.longitude || p.longitude;
-      //   if (lat && lng) {
-      //     L.marker([lat, lng])
-      //       .addTo(map)
-      //       .bindPopup(`<b>${p.name}</b><br>${p.address}`);
-      //   }
-      // });
-    }
-
-    // Cleanup function for when component unmounts
-    return () => {
-      if (mapInstanceRef.current) {
-        console.log('Would remove map instance');
-        // In real implementation: mapInstanceRef.current.remove();
-      }
-    };
-  }, [property, properties, center, zoom]);
-
+  const navigate = useNavigate();
+  const [activeProperty, setActiveProperty] = useState<Property | null>(null);
+  
+  // Default center if none provided
+  const defaultCenter: [number, number] = center || 
+    (properties.length > 0 && properties[0].latitude && properties[0].longitude) ? 
+    [properties[0].latitude, properties[0].longitude] : 
+    [28.6139, 77.2090]; // Default to Delhi
+  
   return (
-    <div className="relative rounded-lg overflow-hidden shadow-md" style={{ height }}>
-      <div ref={mapContainerRef} className="w-full h-full bg-blue-50/30">
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="text-center p-6 bg-white/70 backdrop-blur-sm rounded-lg shadow-sm">
-            <h3 className="font-medium mb-2">Interactive Map</h3>
-            <p className="text-sm text-muted-foreground">
-              In the actual implementation, this would display an interactive Leaflet.js map
-              showing the property location and nearby amenities.
-            </p>
-            {property && (
-              <div className="mt-3 text-sm">
-                <p className="font-medium">{property.name}</p>
-                <p>{property.address}</p>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
+    <div style={{ height, width: '100%', position: 'relative' }}>
+      <MapContainer 
+        center={defaultCenter} 
+        zoom={zoom} 
+        style={{ height: '100%', width: '100%', borderRadius: '0.5rem' }}
+        scrollWheelZoom={false}
+      >
+        <TileLayer
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        />
+        <ChangeView center={defaultCenter} zoom={zoom} />
+        
+        {properties.map((property) => (
+          <Marker 
+            key={property.id}
+            position={[
+              property.latitude || (property.location?.latitude || 0), 
+              property.longitude || (property.location?.longitude || 0)
+            ]}
+            eventHandlers={{
+              click: () => {
+                setActiveProperty(property);
+              },
+            }}
+          >
+            <Popup>
+              <Card className="w-[250px] border-0 shadow-none">
+                <CardContent className="p-0">
+                  <div 
+                    className="h-32 w-full bg-gray-100 mb-2 rounded-t-lg bg-center bg-cover"
+                    style={{
+                      backgroundImage: property.images && property.images.length > 0 
+                        ? `url(${property.images[0].image_url})` 
+                        : undefined
+                    }}
+                  />
+                  <div className="px-2 pb-2">
+                    <h3 className="font-medium text-sm">{property.name}</h3>
+                    <p className="text-xs text-muted-foreground mb-2">{property.address}</p>
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center space-x-1">
+                        <Star className="h-3 w-3 fill-amber-500 text-amber-500" />
+                        <span className="text-xs">{property.average_rating || '4.5'}</span>
+                      </div>
+                      <div className="text-sm font-medium">
+                        ₹{property.monthly_price.toLocaleString()}/mo
+                      </div>
+                    </div>
+                    <Button 
+                      size="sm" 
+                      className="w-full" 
+                      onClick={() => navigate(`/properties/${property.id}`)}
+                    >
+                      View Details
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </Popup>
+          </Marker>
+        ))}
+      </MapContainer>
     </div>
   );
 };

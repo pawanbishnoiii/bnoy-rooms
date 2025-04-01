@@ -1,6 +1,5 @@
 
 import { supabase } from "@/integrations/supabase/client";
-import { SystemSetting } from "@/types";
 
 /**
  * Get a system setting value by key
@@ -9,20 +8,16 @@ import { SystemSetting } from "@/types";
  */
 export async function getSystemSetting(key: string): Promise<string | undefined> {
   try {
-    // Using a raw query since the system_settings table isn't 
-    // recognized in the generated types yet
+    // Use RPC call instead of direct table access
     const { data, error } = await supabase
-      .from('system_settings')
-      .select('value')
-      .eq('key', key)
-      .single();
+      .rpc('get_setting', { setting_key: key });
 
     if (error) {
       console.error('Error fetching system setting:', error);
       return undefined;
     }
 
-    return data?.value;
+    return data;
   } catch (error) {
     console.error('Error in getSystemSetting:', error);
     return undefined;
@@ -37,36 +32,12 @@ export async function getSystemSetting(key: string): Promise<string | undefined>
  */
 export async function setSystemSetting(key: string, value: string): Promise<boolean> {
   try {
-    // Check if setting exists
-    const { data: existingData } = await supabase
-      .from('system_settings')
-      .select('id')
-      .eq('key', key)
-      .single();
-
-    let error;
-    
-    if (existingData) {
-      // Update existing setting
-      const result = await supabase
-        .from('system_settings')
-        .update({ value, updated_at: new Date().toISOString() })
-        .eq('key', key);
-      
-      error = result.error;
-    } else {
-      // Insert new setting
-      const result = await supabase
-        .from('system_settings')
-        .insert({ 
-          key, 
-          value, 
-          created_at: new Date().toISOString(), 
-          updated_at: new Date().toISOString() 
-        });
-      
-      error = result.error;
-    }
+    // Use RPC call instead of direct table access
+    const { error } = await supabase
+      .rpc('set_setting', {
+        setting_key: key,
+        setting_value: value
+      });
 
     if (error) {
       console.error('Error setting system setting:', error);

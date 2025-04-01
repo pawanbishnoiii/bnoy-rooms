@@ -221,7 +221,7 @@ const BookingForm: React.FC<BookingFormProps> = ({ propertyId, price, timeFrame 
       time_frame: formData.timeFrame,
       price_per_unit: totalPrice / numberOfDays,
       total_amount: totalPrice,
-      status: 'pending' as BookingStatus,
+      status: 'pending', // Use string literal instead of BookingStatus enum
       number_of_guests: formData.guests,
       special_requests: formData.specialRequests,
       payment_status: 'pending'

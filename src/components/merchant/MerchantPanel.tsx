@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Building, Home, CreditCard, Star, User, Bell, ArrowUpRight } from 'lucide-react';
@@ -6,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Property, Booking } from '@/types';
+import { mapDbPropertyToProperty, mapDbBookingToBooking, safelyMapData } from '@/utils/typeUtils';
 
 const MerchantPanel = () => {
   const navigate = useNavigate();
@@ -46,7 +46,7 @@ const MerchantPanel = () => {
       const propertyIds = propertiesData?.map(p => p.id) || [];
       
       // Fetch recent bookings across all properties
-      let bookingsData: Booking[] = [];
+      let bookingsData: any[] = [];
       if (propertyIds.length > 0) {
         const { data, error: bookingsError } = await supabase
           .from('bookings')
@@ -75,8 +75,12 @@ const MerchantPanel = () => {
         .filter(b => b.status === 'confirmed' || b.status === 'completed')
         .reduce((sum, booking) => sum + booking.total_amount, 0);
       
-      setProperties(propertiesData || []);
-      setBookings(bookingsData);
+      // Map data to our interfaces
+      const mappedProperties = safelyMapData(propertiesData, mapDbPropertyToProperty);
+      const mappedBookings = safelyMapData(bookingsData, mapDbBookingToBooking);
+      
+      setProperties(mappedProperties);
+      setBookings(mappedBookings);
       setStats({
         totalProperties,
         activeBookings,

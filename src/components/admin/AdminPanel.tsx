@@ -1,318 +1,280 @@
-import React, { useEffect, useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Activity, BarChart3, Building, DollarSign, Home, MapPin, TrendingUp, User, Users } from 'lucide-react';
+import { Building, Home, CreditCard, Star, User, UserPlus, UserCheck, CalendarCheck } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { Property, Booking, UserProfile } from '@/types';
-import { BarChart, LineChart, PieChart } from '../charts';
+import { StatsCard, OverviewChart, RevenueChart } from '../charts';
 import { mapDbPropertyToProperty } from '@/utils/typeUtils';
 
 const AdminPanel = () => {
-  const [properties, setProperties] = useState<Property[]>([]);
-  const [totalUsers, setTotalUsers] = useState<number>(0);
-  const [totalBookings, setTotalBookings] = useState<number>(0);
-  const [totalMerchants, setTotalMerchants] = useState<number>(0);
-  const [recentBookings, setRecentBookings] = useState<Booking[]>([]);
-  const [usersByRole, setUsersByRole] = useState<any[]>([]);
-  const [bookingsByStatus, setBookingsByStatus] = useState<any[]>([]);
-  const [propertyByCategory, setPropertyByCategory] = useState<any[]>([]);
+  const navigate = useNavigate();
+  const [stats, setStats] = useState({
+    totalProperties: 0,
+    verifiedProperties: 0,
+    pendingProperties: 0,
+    totalUsers: 0,
+    totalMerchants: 0,
+    totalBookings: 0,
+    totalRevenue: 0,
+    bookingsTrend: 0,
+    revenueTrend: 0,
+    usersTrend: 0
+  });
+  
   const [isLoading, setIsLoading] = useState(true);
-
+  const [recentUsers, setRecentUsers] = useState<any[]>([]);
+  const [chartData, setChartData] = useState<any[]>([]);
+  const [revenueData, setRevenueData] = useState<any[]>([]);
+  
   useEffect(() => {
-    fetchDashboardData();
+    fetchStatistics();
   }, []);
-
-  const fetchDashboardData = async () => {
+  
+  const fetchStatistics = async () => {
     setIsLoading(true);
     try {
-      // Fetch total properties
-      const { data: propertyData, error: propertyError } = await supabase
+      // Fetch Properties Stats
+      const { data: properties, error: propertiesError } = await supabase
         .from('properties')
         .select('*');
-
-      // Fetch total users
-      const { count: userCount, error: userError } = await supabase
+        
+      if (propertiesError) throw propertiesError;
+      
+      const verifiedProperties = properties ? properties.filter(p => p.is_verified).length : 0;
+      const pendingProperties = properties ? properties.length - verifiedProperties : 0;
+      
+      // Fetch Users Stats
+      const { data: users, error: usersError } = await supabase
         .from('profiles')
-        .select('*', { count: 'exact', head: true });
-
-      // Fetch total bookings
-      const { count: bookingCount, error: bookingError } = await supabase
+        .select('*')
+        .order('created_at', { ascending: false });
+        
+      if (usersError) throw usersError;
+      
+      // Count merchants separately
+      const merchants = users ? users.filter(u => u.role === 'merchant').length : 0;
+      
+      // Fetch Bookings Stats
+      const { data: bookings, error: bookingsError } = await supabase
         .from('bookings')
-        .select('*', { count: 'exact', head: true });
-
-      // Fetch total merchants
-      const { count: merchantCount, error: merchantError } = await supabase
-        .from('profiles')
-        .select('*', { count: 'exact', head: true })
-        .eq('role', 'merchant');
-
-      // Fetch recent bookings with property and user details
-      const { data: bookingsData, error: bookingsError } = await supabase
-        .from('bookings')
-        .select(`
-          *,
-          property:properties(name, address),
-          user:profiles(full_name, email)
-        `)
-        .order('created_at', { ascending: false })
-        .limit(5);
-
-      // Fetch users by role for pie chart
-      const { data: usersRoleData, error: usersRoleError } = await supabase
-        .from('profiles')
-        .select('role');
-
-      // Process errors
-      if (propertyError) console.error('Error fetching properties:', propertyError);
-      if (userError) console.error('Error fetching users count:', userError);
-      if (bookingError) console.error('Error fetching bookings count:', bookingError);
-      if (merchantError) console.error('Error fetching merchants count:', merchantError);
-      if (bookingsError) console.error('Error fetching recent bookings:', bookingsError);
-      if (usersRoleError) console.error('Error fetching users by role:', usersRoleError);
-
-      // Set the state with the fetched data
-      if (propertyData) setProperties(propertyData.map(mapDbPropertyToProperty));
-      if (userCount !== null) setTotalUsers(userCount);
-      if (bookingCount !== null) setTotalBookings(bookingCount);
-      if (merchantCount !== null) setTotalMerchants(merchantCount);
-      if (bookingsData) setRecentBookings(bookingsData as unknown as Booking[]);
-
-      // Process users by role data
-      if (usersRoleData) {
-        const roleCount: Record<string, number> = {};
-        usersRoleData.forEach(user => {
-          const role = user.role || 'unknown';
-          roleCount[role] = (roleCount[role] || 0) + 1;
-        });
-
-        const roleData = Object.keys(roleCount).map(role => ({
-          name: role.charAt(0).toUpperCase() + role.slice(1),
-          value: roleCount[role]
-        }));
-
-        setUsersByRole(roleData);
-      }
-
-      // Get property categories count
-      if (propertyData) {
-        const categoryCount: Record<string, number> = {};
-        propertyData.forEach(property => {
-          const category = property.category || 'other';
-          categoryCount[category] = (categoryCount[category] || 0) + 1;
-        });
-
-        const categoryData = Object.keys(categoryCount).map(category => ({
-          name: category.replace('_', ' ').charAt(0).toUpperCase() + category.replace('_', ' ').slice(1),
-          value: categoryCount[category]
-        }));
-
-        setPropertyByCategory(categoryData);
-      }
-
-      // Create booking status data
-      const { data: bookingStatusData, error: bookingStatusError } = await supabase
-        .from('bookings')
-        .select('status');
-
-      if (bookingStatusData) {
-        const statusCount: Record<string, number> = {};
-        bookingStatusData.forEach(booking => {
-          const status = booking.status || 'unknown';
-          statusCount[status] = (statusCount[status] || 0) + 1;
-        });
-
-        const statusData = Object.keys(statusCount).map(status => ({
-          name: status.charAt(0).toUpperCase() + status.slice(1),
-          value: statusCount[status]
-        }));
-
-        setBookingsByStatus(statusData);
-      }
-
+        .select('*');
+        
+      if (bookingsError) throw bookingsError;
+      
+      // Calculate total revenue
+      const totalRevenue = bookings 
+        ? bookings.reduce((sum, booking) => {
+            if (booking.status === 'confirmed' || booking.status === 'completed') {
+              return sum + booking.total_amount;
+            }
+            return sum;
+          }, 0)
+        : 0;
+      
+      // Set mock trend data (would be calculated from historical data)
+      const bookingsTrend = 12; // 12% up from last period
+      const revenueTrend = 8; // 8% up from last period
+      const usersTrend = 5; // 5% up from last period
+      
+      setStats({
+        totalProperties: properties?.length || 0,
+        verifiedProperties,
+        pendingProperties,
+        totalUsers: users?.length || 0,
+        totalMerchants: merchants,
+        totalBookings: bookings?.length || 0,
+        totalRevenue,
+        bookingsTrend,
+        revenueTrend,
+        usersTrend
+      });
+      
+      // Set recent users for display
+      setRecentUsers(users?.slice(0, 5) || []);
+      
+      // Prepare chart data (mocked - would come from actual data)
+      const mockChartData = [
+        { name: "Jan", total: 12 },
+        { name: "Feb", total: 18 },
+        { name: "Mar", total: 24 },
+        { name: "Apr", total: 32 },
+        { name: "May", total: 28 },
+        { name: "Jun", total: 36 },
+        { name: "Jul", total: 42 },
+      ];
+      setChartData(mockChartData);
+      
+      const mockRevenueData = [
+        { name: "Jan", revenue: 8000 },
+        { name: "Feb", revenue: 12000 },
+        { name: "Mar", revenue: 10500 },
+        { name: "Apr", revenue: 18000 },
+        { name: "May", revenue: 15000 },
+        { name: "Jun", revenue: 22000 },
+        { name: "Jul", revenue: 28000 },
+      ];
+      setRevenueData(mockRevenueData);
+      
     } catch (error) {
-      console.error('Error fetching dashboard data:', error);
+      console.error('Error fetching admin statistics:', error);
     } finally {
       setIsLoading(false);
     }
   };
-
-  const getTotalRevenue = () => {
-    return recentBookings.reduce((sum, booking) => {
-      // Make sure to parse the number correctly
-      const amount = typeof booking.total_amount === 'number' ? booking.total_amount : 0;
-      return sum + amount;
-    }, 0);
-  };
-
-  const getMonthlyBookingStats = () => {
-    const last6Months = Array.from({ length: 6 }).map((_, i) => {
-      const date = new Date();
-      date.setMonth(date.getMonth() - i);
-      return {
-        name: date.toLocaleString('default', { month: 'short' }),
-        bookings: Math.floor(Math.random() * 50) + 10, // Placeholder for real data
-        revenue: Math.floor(Math.random() * 5000) + 1000 // Placeholder for real data
-      };
-    }).reverse();
-
-    return last6Months;
-  };
-
+  
   return (
     <div className="space-y-6">
       <div>
         <h2 className="text-3xl font-bold tracking-tight">Admin Dashboard</h2>
         <p className="text-muted-foreground">
-          Overview of platform metrics and performance.
+          Overview of your platform statistics and performance.
         </p>
       </div>
-
-      <Tabs defaultValue="overview" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="analytics">Analytics</TabsTrigger>
-          <TabsTrigger value="reports">Reports</TabsTrigger>
-        </TabsList>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <StatsCard
+          title="Total Properties"
+          value={stats.totalProperties}
+          icon={<Building />}
+          description="Listed properties on platform"
+          trend={{ value: 12, label: "from last month", positive: true }}
+        />
         
-        <TabsContent value="overview" className="space-y-4">
-          {/* Stats Cards */}
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Total Properties
-                </CardTitle>
-                <Building className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{properties.length}</div>
-                <p className="text-xs text-muted-foreground">
-                  {properties.filter(p => p.is_verified).length} verified
+        <StatsCard
+          title="Total Users"
+          value={stats.totalUsers}
+          icon={<User />}
+          description="Registered platform users"
+          trend={{ value: stats.usersTrend, label: "from last month", positive: true }}
+        />
+        
+        <StatsCard
+          title="Bookings"
+          value={stats.totalBookings}
+          icon={<CalendarCheck />}
+          description="Total bookings made"
+          trend={{ value: stats.bookingsTrend, label: "from last period", positive: true }}
+        />
+        
+        <StatsCard
+          title="Total Revenue"
+          value={`₹${stats.totalRevenue.toLocaleString()}`}
+          icon={<CreditCard />}
+          description="Platform revenue"
+          trend={{ value: stats.revenueTrend, label: "from last period", positive: true }}
+        />
+      </div>
+      
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <OverviewChart 
+          title="New Users Overview" 
+          data={chartData} 
+        />
+        
+        <RevenueChart 
+          data={revenueData} 
+        />
+      </div>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Recent Users</CardTitle>
+            <CardDescription>New users that have joined recently</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <div className="flex items-center justify-center h-40">
+                <p className="text-sm text-muted-foreground">Loading...</p>
+              </div>
+            ) : recentUsers.length > 0 ? (
+              <div className="space-y-4">
+                {recentUsers.map((user) => (
+                  <div key={user.id} className="flex items-center gap-4 pb-4 border-b last:border-0 last:pb-0">
+                    <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center">
+                      {user.role === 'admin' ? <UserCheck size={18} /> : 
+                       user.role === 'merchant' ? <Building size={18} /> : <User size={18} />}
+                    </div>
+                    <div className="flex flex-col flex-1">
+                      <div className="flex justify-between">
+                        <span className="font-medium">{user.full_name || 'Unnamed User'}</span>
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-secondary">{user.role}</span>
+                      </div>
+                      <span className="text-sm text-muted-foreground">{user.email}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <UserPlus className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+                <h3 className="font-medium mb-1">No recent users</h3>
+                <p className="text-sm text-muted-foreground">
+                  New users will appear here when they register
                 </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Total Users
-                </CardTitle>
-                <Users className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{totalUsers}</div>
-                <p className="text-xs text-muted-foreground">
-                  {totalMerchants} merchants, {totalUsers - totalMerchants} students
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Total Bookings
-                </CardTitle>
-                <Activity className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{totalBookings}</div>
-                <p className="text-xs text-muted-foreground">
-                  {Math.round((totalBookings / (totalUsers || 1)) * 100) / 100} avg. per user
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Total Revenue
-                </CardTitle>
-                <DollarSign className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">₹{getTotalRevenue().toLocaleString()}</div>
-                <p className="text-xs text-muted-foreground">
-                  ₹{totalBookings ? Math.round(getTotalRevenue() / totalBookings) : 0} avg. per booking
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Charts */}
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-            <Card className="col-span-7 md:col-span-4">
-              <CardHeader>
-                <CardTitle>Revenue & Booking Trends</CardTitle>
-              </CardHeader>
-              <CardContent className="pl-2">
-                <BarChart data={getMonthlyBookingStats()} />
-              </CardContent>
-            </Card>
-
-            <Card className="col-span-7 md:col-span-3">
-              <CardHeader>
-                <CardTitle>User Distribution</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <PieChart data={usersByRole} />
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Other stats */}
-          <div className="grid gap-4 md:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <CardTitle>Booking Status Distribution</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <PieChart data={bookingsByStatus} />
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Properties by Category</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <PieChart data={propertyByCategory} />
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="analytics" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Detailed Analytics</CardTitle>
-              <CardDescription>
-                In-depth analysis of platform metrics and trends.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">
-                Detailed analytics content will be shown here.
-              </p>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="reports" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Generated Reports</CardTitle>
-              <CardDescription>
-                Download and view system reports.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">
-                Reports section is under construction.
-              </p>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader>
+            <CardTitle>Verification Status</CardTitle>
+            <CardDescription>Property verification statistics</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="flex items-center gap-4">
+                <div className="h-10 w-10 rounded-full bg-green-100 text-green-800 flex items-center justify-center">
+                  <UserCheck size={18} />
+                </div>
+                <div className="flex-1">
+                  <div className="text-sm font-medium">Verified Properties</div>
+                  <div className="text-2xl font-bold">{stats.verifiedProperties}</div>
+                </div>
+                <div className="text-green-600 text-sm">
+                  {stats.totalProperties > 0 ? 
+                    `${Math.round((stats.verifiedProperties / stats.totalProperties) * 100)}%` : 
+                    '0%'}
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-4">
+                <div className="h-10 w-10 rounded-full bg-amber-100 text-amber-800 flex items-center justify-center">
+                  <Home size={18} />
+                </div>
+                <div className="flex-1">
+                  <div className="text-sm font-medium">Pending Verification</div>
+                  <div className="text-2xl font-bold">{stats.pendingProperties}</div>
+                </div>
+                <div className="text-amber-600 text-sm">
+                  {stats.totalProperties > 0 ? 
+                    `${Math.round((stats.pendingProperties / stats.totalProperties) * 100)}%` : 
+                    '0%'}
+                </div>
+              </div>
+              
+              <div className="mt-6">
+                <div className="bg-secondary w-full h-2 rounded-full overflow-hidden">
+                  <div 
+                    className="bg-green-500 h-full" 
+                    style={{ 
+                      width: `${stats.totalProperties > 0 ? 
+                        (stats.verifiedProperties / stats.totalProperties) * 100 : 0}%` 
+                    }}
+                  />
+                </div>
+                <div className="flex justify-between mt-2 text-sm text-muted-foreground">
+                  <div>0%</div>
+                  <div>50%</div>
+                  <div>100%</div>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 };
