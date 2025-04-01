@@ -7,12 +7,13 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Booking, Favorite, Property } from '@/types';
 import { format } from 'date-fns';
+import { mapDbBookingToBooking, mapDbFavoriteToFavorite } from '@/utils/typeUtils';
 
 const StudentPanel = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [bookings, setBookings] = useState<Booking[]>([]);
-  const [favorites, setFavorites] = useState<(Favorite & { property: Property })[]>([]);
+  const [favorites, setFavorites] = useState<Favorite[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   
   useEffect(() => {
@@ -50,8 +51,12 @@ const StudentPanel = () => {
         
       if (favoritesError) throw favoritesError;
       
-      setBookings(bookingsData || []);
-      setFavorites(favoritesData || []);
+      // Use the mappers to ensure type safety
+      const mappedBookings = bookingsData ? bookingsData.map(booking => mapDbBookingToBooking(booking)) : [];
+      const mappedFavorites = favoritesData ? favoritesData.map(favorite => mapDbFavoriteToFavorite(favorite)) : [];
+      
+      setBookings(mappedBookings);
+      setFavorites(mappedFavorites);
     } catch (error) {
       console.error('Error fetching user data:', error);
     } finally {
@@ -209,18 +214,18 @@ const StudentPanel = () => {
                     <div 
                       className="h-12 w-12 rounded-md bg-gray-100 overflow-hidden"
                       style={{
-                        backgroundImage: favorite.property.images && favorite.property.images.length > 0 ? 
+                        backgroundImage: favorite.property && favorite.property.images && favorite.property.images.length > 0 ? 
                           `url(${favorite.property.images[0].image_url})` : undefined,
                         backgroundSize: 'cover',
                         backgroundPosition: 'center',
                       }}
                     />
                     <div className="flex-1">
-                      <p className="font-medium">{favorite.property.name}</p>
-                      <p className="text-sm text-muted-foreground mt-1">₹{favorite.property.monthly_price}/month</p>
+                      <p className="font-medium">{favorite.property?.name}</p>
+                      <p className="text-sm text-muted-foreground mt-1">₹{favorite.property?.monthly_price}/month</p>
                       <div className="text-xs text-muted-foreground flex items-center mt-1">
                         <MapPin className="h-3 w-3 mr-1" />
-                        <span>{favorite.property.address}</span>
+                        <span>{favorite.property?.address}</span>
                       </div>
                       <button 
                         onClick={() => navigate(`/properties/${favorite.property_id}`)}

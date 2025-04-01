@@ -1,7 +1,8 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { Property, Room, TimeFrame } from '@/types';
+import { Property, Room, TimeFrame, BookingStatus } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
 import { Calendar } from 'lucide-react';
 import { DateRange } from 'react-day-picker';
@@ -15,8 +16,16 @@ import { Calendar as CalendarUI } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Separator } from "@/components/ui/separator";
 import { Steps } from "@/components/ui/steps";
+import { cn } from '@/lib/utils';
+import { mapDbPropertyToProperty } from '@/utils/typeUtils';
 
-interface BookingData {
+interface BookingFormProps {
+  propertyId: string;
+  price: number;
+  timeFrame: string;
+}
+
+interface FormData {
   checkInDate: Date | undefined;
   checkOutDate: Date | undefined;
   checkInTime: string;
@@ -26,21 +35,20 @@ interface BookingData {
   specialRequests: string;
 }
 
-const BookingForm: React.FC = () => {
-  const { propertyId } = useParams<{ propertyId: string }>();
-  const { user } = useAuth();
+const BookingForm: React.FC<BookingFormProps> = ({ propertyId, price, timeFrame }) => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { toast } = useToast();
 
   const [property, setProperty] = useState<Property | null>(null);
   const [rooms, setRooms] = useState<Room[]>([]);
   const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
-  const [bookingData, setBookingData] = useState<BookingData>({
+  const [formData, setFormData] = useState<FormData>({
     checkInDate: undefined,
     checkOutDate: undefined,
     checkInTime: '14:00',
     checkOutTime: '12:00',
-    timeFrame: 'monthly',
+    timeFrame: timeFrame as TimeFrame || 'monthly',
     guests: 1,
     specialRequests: '',
   });
@@ -50,7 +58,7 @@ const BookingForm: React.FC = () => {
   });
   const [totalPrice, setTotalPrice] = useState<number>(0);
   const [numberOfDays, setNumberOfDays] = useState<number>(0);
-  const [currentStep, setCurrentStep] = useState<number>(1);
+  const [currentStep, setCurrentStep] = useState<number>(0);
 
   useEffect(() => {
     if (!propertyId) {
@@ -75,7 +83,7 @@ const BookingForm: React.FC = () => {
         }
 
         if (propertyData) {
-          setProperty(propertyData as Property);
+          setProperty(mapDbPropertyToProperty(propertyData));
         } else {
           toast({
             title: 'Error',
@@ -124,15 +132,23 @@ const BookingForm: React.FC = () => {
       const timeDiff = date.to.getTime() - date.from.getTime();
       const days = Math.ceil(timeDiff / (1000 * 3600 * 24));
       setNumberOfDays(days);
-      setBookingData({
-        ...bookingData,
+      setFormData({
+        ...formData,
         checkInDate: date.from,
         checkOutDate: date.to,
       });
-      const calculatedPrice = days * selectedRoom.monthly_price;
+      
+      // Calculate price based on selected timeframe
+      let calculatedPrice: number;
+      if (formData.timeFrame === 'daily') {
+        calculatedPrice = days * (selectedRoom.daily_price || price);
+      } else {
+        // For monthly, convert to equivalent monthly price
+        calculatedPrice = Math.ceil(days / 30) * (selectedRoom.monthly_price || price);
+      }
       setTotalPrice(calculatedPrice);
     }
-  }, [date, selectedRoom, bookingData]);
+  }, [date, selectedRoom, formData.timeFrame, price]);
 
   const handleRoomChange = (roomId: string) => {
     const room = rooms.find((r) => r.id === roomId);
@@ -140,15 +156,15 @@ const BookingForm: React.FC = () => {
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    setBookingData({
-      ...bookingData,
+    setFormData({
+      ...formData,
       [e.target.name]: e.target.value,
     });
   };
 
   const handleTimeFrameChange = (timeFrame: TimeFrame) => {
-    setBookingData({
-      ...bookingData,
+    setFormData({
+      ...formData,
       timeFrame: timeFrame,
     });
   };
@@ -173,34 +189,41 @@ const BookingForm: React.FC = () => {
   ];
 
   const nextStep = () => {
-    if (currentStep < steps.length) {
+    if (currentStep < steps.length - 1) {
       setCurrentStep(currentStep + 1);
     }
   };
 
   const prevStep = () => {
-    if (currentStep > 1) {
+    if (currentStep > 0) {
       setCurrentStep(currentStep - 1);
     }
   };
 
   const createBooking = async () => {
-    // Casting to any to avoid type issues with the database schema
-    // that doesn't match our TypeScript definitions yet
-    const bookingData: any = {
-      property_id: property.id,
-      room_id: selectedRoom?.id,
+    if (!user || !selectedRoom || !formData.checkInDate || !formData.checkOutDate) {
+      toast({
+        title: 'Error',
+        description: 'Missing required booking information.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const bookingData = {
+      property_id: propertyId,
+      room_id: selectedRoom.id,
       user_id: user.id,
-      check_in_date: bookingData.checkInDate,
-      check_out_date: bookingData.checkOutDate,
-      check_in_time: bookingData.checkInTime || '14:00',
-      check_out_time: bookingData.checkOutTime || '12:00',
-      time_frame: bookingData.timeFrame,
+      check_in_date: formData.checkInDate.toISOString().split('T')[0],
+      check_out_date: formData.checkOutDate.toISOString().split('T')[0],
+      check_in_time: formData.checkInTime || '14:00',
+      check_out_time: formData.checkOutTime || '12:00',
+      time_frame: formData.timeFrame,
       price_per_unit: totalPrice / numberOfDays,
       total_amount: totalPrice,
-      status: 'pending', // Use a string literal instead of BookingStatus enum
-      number_of_guests: bookingData.guests,
-      special_requests: bookingData.specialRequests,
+      status: 'pending' as BookingStatus,
+      number_of_guests: formData.guests,
+      special_requests: formData.specialRequests,
       payment_status: 'pending'
     };
 
@@ -237,7 +260,7 @@ const BookingForm: React.FC = () => {
       <Steps steps={steps} currentStep={currentStep} className="mb-6" />
       <Separator className="mb-4" />
 
-      {currentStep === 1 && (
+      {currentStep === 0 && (
         <div className="space-y-4">
           <h2 className="text-xl font-semibold">Select a Room</h2>
           {rooms.map((room) => (
@@ -263,7 +286,7 @@ const BookingForm: React.FC = () => {
         </div>
       )}
 
-      {currentStep === 2 && (
+      {currentStep === 1 && (
         <div className="space-y-4">
           <h2 className="text-xl font-semibold">Choose Your Dates</h2>
           <Popover>
@@ -310,7 +333,7 @@ const BookingForm: React.FC = () => {
         </div>
       )}
 
-      {currentStep === 3 && (
+      {currentStep === 2 && (
         <div className="space-y-4">
           <h2 className="text-xl font-semibold">Booking Details</h2>
           <div>
@@ -319,7 +342,7 @@ const BookingForm: React.FC = () => {
               type="number"
               id="guests"
               name="guests"
-              value={bookingData.guests}
+              value={formData.guests}
               onChange={handleInputChange}
               min="1"
               className="w-full"
@@ -330,7 +353,7 @@ const BookingForm: React.FC = () => {
             <textarea
               id="specialRequests"
               name="specialRequests"
-              value={bookingData.specialRequests}
+              value={formData.specialRequests}
               onChange={handleInputChange}
               className="w-full border rounded p-2"
             />
@@ -341,7 +364,7 @@ const BookingForm: React.FC = () => {
               type="time"
               id="checkInTime"
               name="checkInTime"
-              value={bookingData.checkInTime}
+              value={formData.checkInTime}
               onChange={handleInputChange}
               className="w-full"
             />
@@ -352,16 +375,19 @@ const BookingForm: React.FC = () => {
               type="time"
               id="checkOutTime"
               name="checkOutTime"
-              value={bookingData.checkOutTime}
+              value={formData.checkOutTime}
               onChange={handleInputChange}
               className="w-full"
             />
           </div>
           <div>
             <Label>Time Frame</Label>
-            <Select onValueChange={(value) => handleTimeFrameChange(value as TimeFrame)}>
+            <Select 
+              value={formData.timeFrame} 
+              onValueChange={(value) => handleTimeFrameChange(value as TimeFrame)}
+            >
               <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Select time frame" defaultValue="monthly" />
+                <SelectValue placeholder="Select time frame" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="daily">Daily</SelectItem>
@@ -378,13 +404,13 @@ const BookingForm: React.FC = () => {
         </div>
       )}
 
-      {currentStep === 4 && (
+      {currentStep === 3 && (
         <div className="space-y-4">
           <h2 className="text-xl font-semibold">Confirm Booking</h2>
           <p>Property: {property.name}</p>
           <p>Room: {selectedRoom?.room_number}</p>
-          <p>Check-in Date: {bookingData.checkInDate?.toLocaleDateString()}</p>
-          <p>Check-out Date: {bookingData.checkOutDate?.toLocaleDateString()}</p>
+          <p>Check-in Date: {formData.checkInDate?.toLocaleDateString()}</p>
+          <p>Check-out Date: {formData.checkOutDate?.toLocaleDateString()}</p>
           <p>Number of Days: {numberOfDays}</p>
           <p>Total Price: ${totalPrice}</p>
           <div className="flex justify-between">

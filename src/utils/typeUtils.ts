@@ -31,8 +31,6 @@ export function mapDbPropertyToProperty(dbProperty: any): Property {
     images: Array.isArray(dbProperty.images) ? dbProperty.images : [],
     facilities: Array.isArray(dbProperty.facilities) ? dbProperty.facilities : [],
     rooms: Array.isArray(dbProperty.rooms) ? dbProperty.rooms : [],
-    latitude: dbProperty.latitude || (dbProperty.location?.latitude) || 0,
-    longitude: dbProperty.longitude || (dbProperty.location?.longitude) || 0,
     // Optional fields
     available_rooms: dbProperty.available_rooms,
     total_rooms: dbProperty.total_rooms,
@@ -43,6 +41,9 @@ export function mapDbPropertyToProperty(dbProperty: any): Property {
     average_rating: dbProperty.average_rating,
     matchScore: dbProperty.matchScore,
     ai_strengths: dbProperty.ai_strengths,
+    // Include latitude/longitude directly on the property to simplify map rendering
+    latitude: dbProperty.latitude || (dbProperty.location?.latitude) || 0,
+    longitude: dbProperty.longitude || (dbProperty.location?.longitude) || 0,
   };
 
   return property;

@@ -38,6 +38,7 @@ import {
   Loader2,
   Lock
 } from 'lucide-react';
+import { mapDbPropertyToProperty } from '@/utils/typeUtils';
 
 const PropertyDetails = () => {
   const { propertyId } = useParams<{ propertyId: string }>();
@@ -88,11 +89,10 @@ const PropertyDetails = () => {
       if (roomsError) throw roomsError;
 
       // Transform the property data
-      const transformedProperty = {
+      const transformedProperty = mapDbPropertyToProperty({
         ...propertyData,
-        facilities: propertyData.facilities.map((f: any) => f.facility),
-        location: propertyData.location || null,
-      };
+        facilities: propertyData.facilities?.map((f: any) => f.facility) || [],
+      });
 
       setProperty(transformedProperty);
       setRooms(roomsData || []);
@@ -255,7 +255,7 @@ const PropertyDetails = () => {
                   </Badge>
                   
                   {property.available_rooms !== undefined && (
-                    <Badge variant={property.available_rooms > 0 ? "success" : "secondary"} className="text-xs">
+                    <Badge variant={property.available_rooms > 0 ? "default" : "secondary"} className="text-xs">
                       {property.available_rooms} room{property.available_rooms !== 1 ? 's' : ''} available
                     </Badge>
                   )}
@@ -461,16 +461,9 @@ const PropertyDetails = () => {
                       )}
                     </div>
                     
-                    {property.latitude && property.longitude ? (
-                      <div className="bg-gray-100 h-64 rounded-md flex items-center justify-center">
-                        <p className="text-muted-foreground">Map view would appear here</p>
-                      </div>
-                    ) : (
-                      <div className="text-center bg-gray-100 p-6 rounded-md">
-                        <MapPin className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-                        <p className="text-muted-foreground">Exact location not available</p>
-                      </div>
-                    )}
+                    <div className="bg-gray-100 h-64 rounded-md flex items-center justify-center">
+                      <p className="text-muted-foreground">Map view would appear here</p>
+                    </div>
                   </TabsContent>
                   
                   <TabsContent value="ai-insights" className="p-6">
@@ -502,8 +495,8 @@ const PropertyDetails = () => {
                         
                         <TabsContent value="monthly">
                           <BookingForm 
-                            propertyId={property.id} 
-                            price={property.monthly_price} 
+                            propertyId={property.id}
+                            price={property.monthly_price}
                             timeFrame="monthly"
                           />
                         </TabsContent>
@@ -511,8 +504,8 @@ const PropertyDetails = () => {
                         {property.daily_price && (
                           <TabsContent value="daily">
                             <BookingForm 
-                              propertyId={property.id} 
-                              price={property.daily_price} 
+                              propertyId={property.id}
+                              price={property.daily_price}
                               timeFrame="daily"
                             />
                           </TabsContent>
